@@ -1,5 +1,11 @@
 # @traien/n8n-nodes-espocrm
+![NPM Version](https://img.shields.io/npm/v/%40traien%2Fn8n-nodes-espocrm)
+
 ![@traien/n8n-nodes-espocrm](https://user-images.githubusercontent.com/10284570/173569848-c624317f-42b1-45a6-ab09-f0ea3c247648.png)
+
+Sponsored by:
+
+[![servbay](https://github.com/user-attachments/assets/d53de5a3-f560-4e96-be9d-fd4b6f5ac6a5)](https://www.servbay.com)
 
 This is a community node for [n8n](https://n8n.io/) that enables seamless integration with [EspoCRM](https://www.espocrm.com/), a powerful open-source CRM platform. With this node, you can automate your CRM operations and integrate EspoCRM with other services in your n8n workflows.
 
