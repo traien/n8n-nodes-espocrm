@@ -102,7 +102,10 @@ export class ContactHandler implements EntityHandler {
     }
     
     if (filterOptions.select) {
-      qs.select = filterOptions.select;
+      const selectValue = filterOptions.select as string;
+      if (selectValue) {
+        qs.select = selectValue.split(',').map(s => s.trim()).filter(Boolean);
+      }
     }
     
     if (filterOptions.offset) {
