@@ -445,7 +445,10 @@ export class EspoCRM implements INodeType {
 							qs.order = filters.order;
 						}
 						if (filters.select) {
-							qs.select = filters.select;
+							const selectValue = filters.select as string;
+							if (selectValue) {
+								qs.select = selectValue.split(',').map(s => s.trim()).filter(Boolean);
+							}
 						}
 						
 						// Handle pagination
