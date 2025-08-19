@@ -12,7 +12,7 @@ import * as crypto from 'crypto';
 type IFunctions = IExecuteFunctions | ILoadOptionsFunctions;
 
 /**
- * Make an API request to EspoCRM
+ * Make an API request to EspoCrm
  */
 export async function espoApiRequest(
 	this: IFunctions,
@@ -48,7 +48,7 @@ export async function espoApiRequest(
 		const hmac = crypto.createHmac('sha256', credentials.secretKey);
 		hmac.update(hmacString);
 		const signature = hmac.digest('base64');
-		
+
 		// Format as X-Hmac-Authorization header
 		const authPart = Buffer.from(credentials.apiKey + ':').toString('base64') + signature;
 		options.headers!['X-Hmac-Authorization'] = authPart;
@@ -74,10 +74,10 @@ export async function espoApiRequest(
 			const errorMessage = error.response.body.message || error.message;
 			const statusCode = error.statusCode;
 			const statusReason = error.response.headers && error.response.headers['x-status-reason'] || '';
-			
+
 			throw new NodeOperationError(
-				this.getNode(), 
-				`EspoCRM API error: ${errorMessage}. Status: ${statusCode}${statusReason ? `. Reason: ${statusReason}` : ''}`,
+				this.getNode(),
+				`EspoCrm API error: ${errorMessage}. Status: ${statusCode}${statusReason ? `. Reason: ${statusReason}` : ''}`,
 			);
 		}
 		throw error;
@@ -95,20 +95,20 @@ export async function espoApiRequestAllItems(
 	qs: IDataObject = {},
 ): Promise<any> {
 	const returnData: IDataObject[] = [];
-	
+
 	let responseData;
 	qs.maxSize = 100;
 	qs.offset = 0;
-	
+
 	do {
 		responseData = await espoApiRequest.call(this, method, endpoint, body, qs);
 		returnData.push.apply(returnData, responseData.list);
 		qs.offset = returnData.length;
 	} while (
-		responseData.total !== undefined && 
+		responseData.total !== undefined &&
 		responseData.list.length > 0 &&
 		returnData.length < responseData.total
 	);
-	
+
 	return returnData;
 }

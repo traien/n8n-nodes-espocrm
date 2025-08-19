@@ -5,9 +5,9 @@ import {
 	INodeProperties,
 } from 'n8n-workflow';
 
-export class EspoCRMApi implements ICredentialType {
+export class EspoCrmApi implements ICredentialType {
 	name = 'espoCRMApi';
-	displayName = 'EspoCRM API';
+	displayName = 'EspoCrm API';
 	documentationUrl = 'https://docs.espocrm.com/development/api/';
 	properties: INodeProperties[] = [
 		{
@@ -17,7 +17,7 @@ export class EspoCRMApi implements ICredentialType {
 			default: '',
 			placeholder: 'https://example.espocrm.com',
 			required: true,
-			description: 'The base URL of your EspoCRM instance',
+			description: 'The base URL of your EspoCrm instance',
 		},
 		{
 			displayName: 'Authentication Type',
@@ -48,7 +48,7 @@ export class EspoCRMApi implements ICredentialType {
 					authType: ['apiKey', 'hmac'],
 				},
 			},
-			description: 'The API Key for your EspoCRM account',
+			description: 'The API Key for your EspoCrm account',
 		},
 		{
 			displayName: 'Secret Key',

@@ -10,17 +10,17 @@ import {
 } from 'n8n-workflow';
 import { createHmac } from 'crypto';
 
-export class EspoCRMTrigger implements INodeType {
+export class EspoCrmTrigger implements INodeType {
 	description: INodeTypeDescription = {
-		displayName: 'EspoCRM Trigger',
+		displayName: 'EspoCrm Trigger',
 		name: 'espoCrmTrigger',
 		icon: 'file:espocrm-trigger.svg',
 		group: ['trigger'],
 		version: 1,
 		subtitle: '={{$parameter["eventType"] + ": " + $parameter["entityType"]}}',
-		description: 'Handle EspoCRM Webhooks',
+		description: 'Handle EspoCrm Webhooks',
 		defaults: {
-			name: 'EspoCRM Trigger',
+			name: 'EspoCrm Trigger',
 		},
 		inputs: [],
 		outputs: ['main'],
@@ -97,12 +97,12 @@ export class EspoCRMTrigger implements INodeType {
 				name: 'verification',
 				type: 'boolean',
 				default: true,
-				description: 'Whether to verify the webhook signature to ensure it comes from EspoCRM',
+				description: 'Whether to verify the webhook signature to ensure it comes from EspoCrm',
 			},
 		],
 	};
 
-	// The function to register the webhook in EspoCRM system
+	// The function to register the webhook in EspoCrm system
 	async webhookCreate(this: IHookFunctions): Promise<boolean> {
 		const webhookUrl = this.getNodeWebhookUrl('default');
 		const webhookData = this.getWorkflowStaticData('node');
@@ -114,7 +114,7 @@ export class EspoCRMTrigger implements INodeType {
 
 		// Build the event name for webhook registration based on selected parameters
 		let eventName = `${entityType}.${eventType}`;
-		
+
 		// If it's a fieldUpdate, append the field name
 		if (eventType === 'fieldUpdate') {
 			const fieldName = this.getNodeParameter('fieldName') as string;
@@ -144,7 +144,7 @@ export class EspoCRMTrigger implements INodeType {
 			const hmac = createHmac('sha256', credentials.secretKey as string);
 			hmac.update(hmacString);
 			const signature = hmac.digest('base64');
-			
+
 			// Format as X-Hmac-Authorization header
 			const authPart = Buffer.from(credentials.apiKey + ':').toString('base64') + signature;
 			options.headers!['X-Hmac-Authorization'] = authPart;
@@ -154,7 +154,7 @@ export class EspoCRMTrigger implements INodeType {
 		}
 
 		try {
-			// Send request to EspoCRM to create the webhook
+			// Send request to EspoCrm to create the webhook
 			const response = await this.helpers.httpRequest({
 				baseURL: `${credentials.baseUrl}/api/v1`,
 				...options,
@@ -166,25 +166,25 @@ export class EspoCRMTrigger implements INodeType {
 				webhookData.secretKey = response.secretKey;
 				return true;
 			} else {
-				throw new NodeOperationError(this.getNode(), 'Failed to create webhook in EspoCRM: Invalid response');
+				throw new NodeOperationError(this.getNode(), 'Failed to create webhook in EspoCrm: Invalid response');
 			}
 		} catch (error) {
 			if (error.response && error.response.body) {
 				const errorMessage = error.response.body.message || error.message;
 				const statusCode = error.statusCode;
 				throw new NodeOperationError(
-					this.getNode(), 
-					`EspoCRM API error: ${errorMessage}. Status: ${statusCode}`
+					this.getNode(),
+					`EspoCrm API error: ${errorMessage}. Status: ${statusCode}`
 				);
 			}
 			throw error;
 		}
 	}
 
-	// The function to delete the webhook from EspoCRM
+	// The function to delete the webhook from EspoCrm
 	async webhookDelete(this: IHookFunctions): Promise<boolean> {
 		const webhookData = this.getWorkflowStaticData('node');
-		
+
 		// Check if webhook was created previously
 		if (!webhookData.webhookId) {
 			// No webhook was created before
@@ -209,7 +209,7 @@ export class EspoCRMTrigger implements INodeType {
 			const hmac = createHmac('sha256', credentials.secretKey as string);
 			hmac.update(hmacString);
 			const signature = hmac.digest('base64');
-			
+
 			// Format as X-Hmac-Authorization header
 			const authPart = Buffer.from(credentials.apiKey + ':').toString('base64') + signature;
 			options.headers!['X-Hmac-Authorization'] = authPart;
@@ -219,16 +219,16 @@ export class EspoCRMTrigger implements INodeType {
 		}
 
 		try {
-			// Send request to EspoCRM to delete the webhook
+			// Send request to EspoCrm to delete the webhook
 			await this.helpers.httpRequest({
 				baseURL: `${credentials.baseUrl}/api/v1`,
 				...options,
 			});
-			
+
 			// Clear stored webhook data
 			delete webhookData.webhookId;
 			delete webhookData.secretKey;
-			
+
 			return true;
 		} catch (error) {
 			// If the webhook no longer exists (410 status), consider it deleted
@@ -237,13 +237,13 @@ export class EspoCRMTrigger implements INodeType {
 				delete webhookData.secretKey;
 				return true;
 			}
-			
+
 			if (error.response && error.response.body) {
 				const errorMessage = error.response.body.message || error.message;
 				const statusCode = error.statusCode;
 				throw new NodeOperationError(
-					this.getNode(), 
-					`EspoCRM API error: ${errorMessage}. Status: ${statusCode}`
+					this.getNode(),
+					`EspoCrm API error: ${errorMessage}. Status: ${statusCode}`
 				);
 			}
 			throw error;
@@ -274,7 +274,7 @@ export class EspoCRMTrigger implements INodeType {
 				// Calculate expected signature
 				const payload = JSON.stringify(bodyData);
 				const calculatedSignature = Buffer.from(`${webhookData.webhookId}:${createHmac('sha256', webhookData.secretKey as string).update(payload).digest('hex')}`).toString('base64');
-				
+
 				if (signature !== calculatedSignature) {
 					return {
 						webhookResponse: {
@@ -294,7 +294,7 @@ export class EspoCRMTrigger implements INodeType {
 		}
 
 		// Process the webhook data
-		// EspoCRM sends an array of records, even if it's just one
+		// EspoCrm sends an array of records, even if it's just one
 		if (Array.isArray(bodyData)) {
 			const returnData: INodeExecutionData[] = [];
 

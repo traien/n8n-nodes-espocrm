@@ -1,7 +1,7 @@
 {
   "name": "@traien/n8n-nodes-espocrm",
   "version": "1.0.9",
-  "description": "n8n integration with EspoCRM",
+  "description": "n8n integration with EspoCrm",
   "keywords": [
     "n8n-community-node-package",
     "espocrm",
@@ -36,11 +36,11 @@
   "n8n": {
     "n8nNodesApiVersion": 1,
     "credentials": [
-      "dist/credentials/EspoCRMApi.credentials.js"
+      "dist/credentials/EspoCrmApi.credentials.js"
     ],
     "nodes": [
-      "dist/nodes/EspoCRM/EspoCRM.node.js",
-      "dist/nodes/EspoCRMTrigger/EspoCRMTrigger.node.js"
+      "dist/nodes/EspoCrm/EspoCrm.node.js",
+      "dist/nodes/EspoCrmTrigger/EspoCrmTrigger.node.js"
     ]
   },
   "dependencies": {

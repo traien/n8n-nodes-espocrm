@@ -5,7 +5,7 @@ import { espoApiRequest } from '../GenericFunctions';
 type IFunctions = IExecuteFunctions | ILoadOptionsFunctions;
 
 /**
- * Service for handling EspoCRM metadata operations
+ * Service for handling EspoCrm metadata operations
  */
 export class MetadataService {
   /**
@@ -31,7 +31,7 @@ export class MetadataService {
     const responseData = await espoApiRequest.call(execFunctions, 'GET', endpoint);
     return responseData?.entityDefs?.[entityType]?.fields || {};
   }
-  
+
   /**
    * Get a list of all available entity types
    */
@@ -92,10 +92,10 @@ export class MetadataService {
   }
 
   /**
-   * Convert EspoCRM field type to n8n field type
+   * Convert EspoCrm field type to n8n field type
    */
   static mapFieldTypeToN8n(espoFieldType: string, fieldParams: IDataObject = {}): string {
-    // Map EspoCRM field types to n8n field types
+    // Map EspoCrm field types to n8n field types
     switch (espoFieldType) {
       case 'varchar':
       case 'text':
@@ -157,14 +157,14 @@ export class MetadataService {
   }
 
   /**
-   * Generate n8n field options from EspoCRM field metadata
+   * Generate n8n field options from EspoCrm field metadata
    */
   static generateFieldOptions(
     fieldDefs: IDataObject,
     fieldName: string,
   ): INodePropertyOptions[] {
     const fieldDef = fieldDefs[fieldName] as IDataObject;
-    
+
     if (fieldDef) {
       // Handle enum fields
       if (fieldDef.type === 'enum' && fieldDef.options) {
@@ -174,7 +174,7 @@ export class MetadataService {
           value: option,
         }));
       }
-      
+
       // Handle multiEnum fields
       if (fieldDef.type === 'multiEnum' && fieldDef.options) {
         const options = fieldDef.options as string[];
@@ -183,7 +183,7 @@ export class MetadataService {
           value: option,
         }));
       }
-      
+
       // Handle link and linkMultiple fields
       if ((fieldDef.type === 'link' || fieldDef.type === 'linkMultiple') && fieldDef.entity) {
         // For links, we would typically need to fetch the available options from the linked entity
@@ -192,7 +192,7 @@ export class MetadataService {
         return [];
       }
     }
-    
+
     return [];
   }
 
