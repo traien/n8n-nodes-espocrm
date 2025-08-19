@@ -1,4 +1,4 @@
-import { IExecuteFunctions, IDataObject } from 'n8n-workflow';
+import { IExecuteFunctions, IDataObject, NodeOperationError } from 'n8n-workflow';
 import { EntityHandler } from './EntityHandler';
 import { espoApiRequest, espoApiRequestAllItems } from '../GenericFunctions';
 import { processAddressFields } from './Utils';
@@ -103,7 +103,15 @@ export class AccountHandler implements EntityHandler {
     const filterOptions = this.getNodeParameter('filterOptions', index, {}) as IDataObject;
     
     if (filterOptions.where) {
-      qs.where = filterOptions.where;
+			if (typeof filterOptions.where === 'string') {
+				try {
+					qs.where = JSON.parse(filterOptions.where);
+				} catch (e) {
+					throw new NodeOperationError(this.getNode(), `Invalid JSON in 'where' parameter: ${e.message}`);
+				}
+			} else {
+				qs.where = filterOptions.where;
+			}
     }
     
     if (filterOptions.orderBy) {

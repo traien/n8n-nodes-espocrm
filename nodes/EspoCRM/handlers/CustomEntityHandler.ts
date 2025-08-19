@@ -1,4 +1,4 @@
-import { IExecuteFunctions, IDataObject } from 'n8n-workflow';
+import { IExecuteFunctions, IDataObject, NodeOperationError } from 'n8n-workflow';
 import { EntityHandler } from './EntityHandler';
 import { espoApiRequest, espoApiRequestAllItems } from '../GenericFunctions';
 
@@ -12,7 +12,7 @@ export class CustomEntityHandler implements EntityHandler {
   async create(this: IExecuteFunctions, index: number): Promise<IDataObject> {
     const entityType = this.getNodeParameter('entityType', index) as string;
     const entityData = JSON.parse(this.getNodeParameter('data', index) as string);
-    
+
     // Execute API request
     const endpoint = `/${entityType}`;
     const responseData = await espoApiRequest.call(this, 'POST', endpoint, entityData);
@@ -25,7 +25,7 @@ export class CustomEntityHandler implements EntityHandler {
   async get(this: IExecuteFunctions, index: number): Promise<IDataObject> {
     const entityType = this.getNodeParameter('entityType', index) as string;
     const recordId = this.getNodeParameter('id', index) as string;
-    
+
     const endpoint = `/${entityType}/${recordId}`;
     const responseData = await espoApiRequest.call(this, 'GET', endpoint);
     return responseData as IDataObject;
@@ -38,7 +38,7 @@ export class CustomEntityHandler implements EntityHandler {
     const entityType = this.getNodeParameter('entityType', index) as string;
     const recordId = this.getNodeParameter('id', index) as string;
     const entityData = JSON.parse(this.getNodeParameter('data', index) as string);
-    
+
     const endpoint = `/${entityType}/${recordId}`;
     const responseData = await espoApiRequest.call(this, 'PATCH', endpoint, entityData);
     return responseData as IDataObject;
@@ -50,14 +50,14 @@ export class CustomEntityHandler implements EntityHandler {
   async delete(this: IExecuteFunctions, index: number): Promise<IDataObject> {
     const entityType = this.getNodeParameter('entityType', index) as string;
     const recordId = this.getNodeParameter('id', index) as string;
-    
+
     const endpoint = `/${entityType}/${recordId}`;
     await espoApiRequest.call(this, 'DELETE', endpoint);
-    return { 
-      success: true, 
-      entityType, 
-      id: recordId, 
-      message: `${entityType} deleted successfully` 
+    return {
+      success: true,
+      entityType,
+      id: recordId,
+      message: `${entityType} deleted successfully`
     };
   }
 
@@ -69,44 +69,52 @@ export class CustomEntityHandler implements EntityHandler {
     const returnAll = this.getNodeParameter('returnAll', index) as boolean;
     const endpoint = `/${entityType}`;
     const qs: IDataObject = {};
-    
+
     // Add filter options
     const filterOptions = this.getNodeParameter('filterOptions', index, {}) as IDataObject;
-    
+
     if (filterOptions.where) {
-      qs.where = filterOptions.where;
+			if (typeof filterOptions.where === 'string') {
+				try {
+					qs.where = JSON.parse(filterOptions.where);
+				} catch (e) {
+					throw new NodeOperationError(this.getNode(), `Invalid JSON in 'where' parameter: ${e.message}`);
+				}
+			} else {
+				qs.where = filterOptions.where;
+			}
     }
-    
+
     if (filterOptions.orderBy) {
       qs.orderBy = filterOptions.orderBy;
     }
-    
+
     if (filterOptions.order) {
       qs.order = filterOptions.order;
     }
-    
+
     if (filterOptions.select) {
       qs.select = filterOptions.select;
     }
-    
+
     if (filterOptions.offset) {
       qs.offset = filterOptions.offset;
     }
-    
+
     if (filterOptions.boolFilterList) {
       qs.boolFilterList = filterOptions.boolFilterList;
     }
-    
+
     if (filterOptions.primaryFilter) {
       qs.primaryFilter = filterOptions.primaryFilter;
     }
-    
+
     // Add header for skipping total count calculation for large datasets
     const headers: IDataObject = {};
     if (filterOptions.skipTotalCount === true) {
       headers['X-No-Total'] = 'true';
     }
-    
+
     // Handle pagination
     if (returnAll === true) {
       return await espoApiRequestAllItems.call(this, 'GET', endpoint, {}, qs);

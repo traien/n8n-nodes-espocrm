@@ -593,6 +593,9 @@ export const leadFields: INodeProperties[] = [
 				name: 'where',
 				type: 'json',
 				default: '[]',
+				typeOptions: {
+					alwaysParseJson: true,
+				},
 				description: 'Filter conditions for the query as defined in the EspoCRM API',
 			},
 		],

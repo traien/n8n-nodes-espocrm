@@ -148,6 +148,20 @@ The Dynamic resource allows you to work with any entity type in your EspoCRM sys
 - For node-specific issues: Create an issue in the GitHub repository
 - For n8n-related questions: [n8n Community](https://community.n8n.io/)
 
+## Development
+
+To run a local version of n8n with this node for development, you can use the following Docker command. Make sure to replace `/path/to/your/local/n8n-espocrm` with the absolute path to this repository on your machine.
+
+```bash
+docker run -it --rm \\
+ --name n8n \\
+ -p 5678:5678 \\
+ -e N8N_ENFORCE_SETTINGS_FILE_PERMISSIONS=true \\
+ -e N8N_RUNNERS_ENABLED=true \\
+ -e N8N_LOG_LEVEL=debug -v n8n_data:/home/node/.n8n \\
+ -v /path/to/your/local/n8n-espocrm:/home/node/.n8n/custom/n8n-espocrm
+```
+
 ## License
 
 [MIT](LICENSE.md)
