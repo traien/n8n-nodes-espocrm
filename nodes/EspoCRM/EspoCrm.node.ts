@@ -93,7 +93,7 @@ export class EspoCRM implements INodeType {
 				},
 				description: 'Type of entity to interact with (e.g., Opportunity, Case, Product). Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
 			},
-			
+
 			// Include entity-specific operations and fields
 			...accountOperations,
 			...accountFields,
@@ -302,6 +302,9 @@ export class EspoCRM implements INodeType {
 						name: 'where',
 						type: 'json',
 						default: '[]',
+						typeOptions: {
+							alwaysParseJson: true,
+						},
 						description: 'Filter conditions for the query as defined in the EspoCRM API',
 					},
 					{
@@ -332,18 +335,18 @@ export class EspoCRM implements INodeType {
 					return [{ name: 'Error Loading Entity Types', value: '' }];
 				}
 			},
-			
+
 			// Get list of fields for a specific entity type
 			async getEntityFields(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
 				const entityType = this.getCurrentNodeParameter('entityType') as string;
-				
+
 				if (!entityType) {
 					return [{ name: 'Please Select an Entity Type First', value: '' }];
 				}
-				
+
 				try {
 					const fieldDefs = await MetadataService.getFieldDefs.call(this, this, entityType);
-					
+
 					return Object.keys(fieldDefs).map(fieldName => {
 						const fieldDef = fieldDefs[fieldName] as IDataObject;
 						const label = fieldDef.label ? `${fieldDef.label as string} (${fieldName})` : fieldName;
@@ -352,26 +355,26 @@ export class EspoCRM implements INodeType {
 							value: fieldName,
 						};
 					}).sort((a, b) => a.name.localeCompare(b.name));
-					
+
 				} catch (error) {
 					console.error(`Error loading fields for entity type ${entityType}:`, error);
 					return [{ name: `Error loading fields for ${entityType}`, value: '' }];
 				}
 			},
-			
+
 			// Get options for enum field
 			async getEnumOptions(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
 				const entityType = this.getCurrentNodeParameter('entityType') as string;
 				const fieldName = this.getCurrentNodeParameter('field') as string;
-				
+
 				if (!entityType || !fieldName) {
 					return [{ name: 'Please Select an Entity Type and Field First', value: '' }];
 				}
-				
+
 				try {
 					const fieldDefs = await MetadataService.getFieldDefs.call(this, this, entityType);
 					const fieldDef = fieldDefs[fieldName] as IDataObject;
-					
+
 					if (fieldDef && fieldDef.type === 'enum' && fieldDef.options) {
 						const options = fieldDef.options as string[];
 						return options.map((option) => ({
@@ -379,9 +382,9 @@ export class EspoCRM implements INodeType {
 							value: option,
 						}));
 					}
-					
+
 					return [{ name: 'Not an Enum Field or No Options Available', value: '' }];
-					
+
 				} catch (error) {
 					console.error(`Error loading enum options for ${entityType}.${fieldName}:`, error);
 					return [{ name: `Error loading options for ${fieldName}`, value: '' }];
@@ -393,28 +396,28 @@ export class EspoCRM implements INodeType {
 	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
 		const items = this.getInputData();
 		const returnData: IDataObject[] = [];
-		
+
 		// For each input item, execute the operation
 		for (let i = 0; i < items.length; i++) {
 			try {
 				const resource = this.getNodeParameter('resource', i) as string;
 				const operation = this.getNodeParameter('operation', i) as string;
-				
+
 				// Handle dynamic operations
 				if (resource === 'dynamic') {
 					const operation = this.getNodeParameter('operation', i) as string;
 					const entityType = this.getNodeParameter('entityType', i) as string;
-					
+
 					if (operation === 'create') {
 						// Create record in the dynamic entity
 						const dataToSend: IDataObject = {};
 						const fields = this.getNodeParameter('fieldsUi.fieldValues', i, []) as IDataObject[];
-						
+
 						// Process input fields
 						for (const field of fields) {
 							dataToSend[field.fieldName as string] = field.fieldValue;
 						}
-						
+
 						// Execute API request
 						const endpoint = `/${entityType}`;
 						const responseData = await espoApiRequest.call(this, 'POST', endpoint, dataToSend);
@@ -433,10 +436,18 @@ export class EspoCRM implements INodeType {
 						const filters = this.getNodeParameter('filters', i, {}) as IDataObject;
 						const endpoint = `/${entityType}`;
 						const qs: IDataObject = {};
-						
+
 						// Process filters
 						if (filters.where) {
-							qs.where = filters.where;
+							if (typeof filters.where === 'string') {
+								try {
+									qs.where = JSON.parse(filters.where);
+								} catch (e) {
+									throw new NodeOperationError(this.getNode(), `Invalid JSON in 'where' parameter: ${e.message}`);
+								}
+							} else {
+								qs.where = filters.where;
+							}
 						}
 						if (filters.orderBy) {
 							qs.orderBy = filters.orderBy;
@@ -445,12 +456,9 @@ export class EspoCRM implements INodeType {
 							qs.order = filters.order;
 						}
 						if (filters.select) {
-							const selectValue = filters.select as string;
-							if (selectValue) {
-								qs.select = selectValue.split(',').map(s => s.trim()).filter(Boolean);
-							}
+							qs.select = filters.select;
 						}
-						
+
 						// Handle pagination
 						if (returnAll === true) {
 							const responseData = await espoApiRequestAllItems.call(this, 'GET', endpoint, {}, qs);
@@ -467,12 +475,12 @@ export class EspoCRM implements INodeType {
 						const recordId = this.getNodeParameter('recordId', i) as string;
 						const dataToSend: IDataObject = {};
 						const fields = this.getNodeParameter('fieldsUi.fieldValues', i, []) as IDataObject[];
-						
+
 						// Process input fields
 						for (const field of fields) {
 							dataToSend[field.fieldName as string] = field.fieldValue;
 						}
-						
+
 						// Execute API request
 						const endpoint = `/${entityType}/${recordId}`;
 						const responseData = await espoApiRequest.call(this, 'PATCH', endpoint, dataToSend);
@@ -494,36 +502,36 @@ export class EspoCRM implements INodeType {
 				else {
 					// Get the appropriate handler for this resource type
 					const handler = HandlerFactory.getHandler(resource);
-					
+
 					// Execute the operation using the handler
 					let responseData: IDataObject | IDataObject[];
-					
+
 					switch (operation) {
 						case 'create':
 							responseData = await handler.create.call(this, i);
 							returnData.push(responseData as IDataObject);
 							break;
-							
+
 						case 'get':
 							responseData = await handler.get.call(this, i);
 							returnData.push(responseData as IDataObject);
 							break;
-							
+
 						case 'update':
 							responseData = await handler.update.call(this, i);
 							returnData.push(responseData as IDataObject);
 							break;
-							
+
 						case 'delete':
 							responseData = await handler.delete.call(this, i);
 							returnData.push(responseData as IDataObject);
 							break;
-							
+
 						case 'getAll':
 							responseData = await handler.getAll.call(this, i);
 							returnData.push(...responseData as IDataObject[]);
 							break;
-							
+
 						default:
 							throw new NodeOperationError(this.getNode(), `The operation "${operation}" is not supported for resource type "${resource}"`);
 					}
@@ -536,7 +544,7 @@ export class EspoCRM implements INodeType {
 				throw error;
 			}
 		}
-		
+
 		return [this.helpers.returnJsonArray(returnData)];
 	}
 }
