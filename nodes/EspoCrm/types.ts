@@ -1,7 +1,7 @@
 import { INodePropertyOptions } from 'n8n-workflow';
 
 // Base resource interface
-export interface EspoCRMResource {
+export interface EspoCrmResource {
 	resource: string;
 	operation: string;
 }
@@ -45,7 +45,7 @@ export const getFilterOptions: INodePropertyOptions[] = [
 	{
 		name: 'Where (Filter Conditions)',
 		value: 'where',
-		description: 'Filter conditions for the query as defined in the EspoCRM API',
+		description: 'Filter conditions for the query as defined in the EspoCrm API',
 	},
 	{
 		name: 'Order By',

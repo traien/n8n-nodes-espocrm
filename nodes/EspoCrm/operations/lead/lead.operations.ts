@@ -596,7 +596,7 @@ export const leadFields: INodeProperties[] = [
 				typeOptions: {
 					alwaysParseJson: true,
 				},
-				description: 'Filter conditions for the query as defined in the EspoCRM API',
+				description: 'Filter conditions for the query as defined in the EspoCrm API',
 			},
 		],
 	},

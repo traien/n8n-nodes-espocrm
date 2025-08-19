@@ -7,13 +7,13 @@ Sponsored by:
 
 [![servbay](https://github.com/user-attachments/assets/d53de5a3-f560-4e96-be9d-fd4b6f5ac6a5)](https://www.servbay.com)
 
-This is a community node for [n8n](https://n8n.io/) that enables seamless integration with [EspoCRM](https://www.espocrm.com/), a powerful open-source CRM platform. With this node, you can automate your CRM operations and integrate EspoCRM with other services in your n8n workflows.
+This is a community node for [n8n](https://n8n.io/) that enables seamless integration with [EspoCrm](https://www.espocrm.com/), a powerful open-source CRM platform. With this node, you can automate your CRM operations and integrate EspoCrm with other services in your n8n workflows.
 
 [n8n](https://n8n.io/) is a [fair-code licensed](https://docs.n8n.io/reference/license/) workflow automation platform.
 
 ## Features
 
-The EspoCRM node provides comprehensive access to EspoCRM's API functionality:
+The EspoCrm node provides comprehensive access to EspoCrm's API functionality:
 
 - **Entity Operations**
   - Create new records (Leads, Contacts, Accounts, etc.)
@@ -23,7 +23,7 @@ The EspoCRM node provides comprehensive access to EspoCRM's API functionality:
   - List/search entities with advanced filtering
 
 - **Dynamic Entity Support**
-  - Work with any entity type in your EspoCRM instance
+  - Work with any entity type in your EspoCrm instance
   - Automatic field detection and validation
   - Custom field support
 
@@ -42,8 +42,8 @@ The EspoCRM node provides comprehensive access to EspoCRM's API functionality:
 
 ## Prerequisites
 
-- Active EspoCRM instance (v6.0 or later recommended)
-- API access enabled in EspoCRM
+- Active EspoCrm instance (v6.0 or later recommended)
+- API access enabled in EspoCrm
 - API user with appropriate permissions
 - n8n installation (v0.170.0 or later)
 
@@ -73,15 +73,15 @@ npm install -g @traien/n8n-nodes-espocrm
 
 ### API Authentication
 
-1. In EspoCRM:
+1. In EspoCrm:
    - Navigate to Administration > API Users
    - Create a new API User
    - Generate an API Key
    - Note down the API Key and API Secret
 
 2. In n8n:
-   - Add new credentials of type 'EspoCRM API'
-   - Enter your EspoCRM instance URL
+   - Add new credentials of type 'EspoCrm API'
+   - Enter your EspoCrm instance URL
    - Input the API Key and API Secret
    - Save the credentials
 
@@ -91,7 +91,7 @@ npm install -g @traien/n8n-nodes-espocrm
 
 Create a new contact record with customized field values:
 
-1. Add an "EspoCRM" node to your workflow
+1. Add an "EspoCrm" node to your workflow
 2. Select "Contact" as the Resource
 3. Choose "Create" as the Operation
 4. Fill in the required fields:
@@ -103,9 +103,9 @@ Create a new contact record with customized field values:
 
 ### Working with Dynamic Entities
 
-The Dynamic resource allows you to work with any entity type in your EspoCRM system:
+The Dynamic resource allows you to work with any entity type in your EspoCrm system:
 
-1. Add an "EspoCRM" node to your workflow
+1. Add an "EspoCrm" node to your workflow
 2. Select "Dynamic" as the Resource
 3. Choose your desired Operation (Create, Update, Get, etc.)
 4. Select the Entity Type from the dropdown
@@ -145,12 +145,12 @@ The Dynamic resource allows you to work with any entity type in your EspoCRM sys
 
 ## Resources
 
-- [EspoCRM API Documentation](https://docs.espocrm.com/development/api/)
+- [EspoCrm API Documentation](https://docs.espocrm.com/development/api/)
 - [n8n Community Nodes Documentation](https://docs.n8n.io/integrations/community-nodes/)
 
 ## Support
 
-- For EspoCRM-specific issues: [EspoCRM Forum](https://forum.espocrm.com/)
+- For EspoCrm-specific issues: [EspoCrm Forum](https://forum.espocrm.com/)
 - For node-specific issues: Create an issue in the GitHub repository
 - For n8n-related questions: [n8n Community](https://community.n8n.io/)
 

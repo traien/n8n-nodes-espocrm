@@ -352,7 +352,7 @@ export const contactFields: INodeProperties[] = [
 				typeOptions: {
 					alwaysParseJson: true,
 				},
-				description: 'Filter conditions for the query as defined in the EspoCRM API',
+				description: 'Filter conditions for the query as defined in the EspoCrm API',
 			},
 			{
 				displayName: 'Order By',

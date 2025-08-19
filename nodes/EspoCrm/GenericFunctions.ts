@@ -12,7 +12,7 @@ import * as crypto from 'crypto';
 type IFunctions = IExecuteFunctions | ILoadOptionsFunctions;
 
 /**
- * Make an API request to EspoCRM
+ * Make an API request to EspoCrm
  */
 export async function espoApiRequest(
 	this: IFunctions,
@@ -57,19 +57,19 @@ export async function espoApiRequest(
 		options.headers!['X-Api-Key'] = credentials.apiKey;
 	}
 
-	this.logger.debug('EspoCRM API request options:', options);
+	this.logger.debug('EspoCrm API request options:', options);
 
 	try {
 		const response = await this.helpers.httpRequest({
 			baseURL: `${credentials.baseUrl}/api/v1`,
 			...options,
 		});
-		this.logger.debug('EspoCRM API response:', response);
+		this.logger.debug('EspoCrm API response:', response);
 		return response;
 	} catch (error) {
-		this.logger.debug('EspoCRM API error message:', error.message);
+		this.logger.debug('EspoCrm API error message:', error.message);
 		if (error.response) {
-			this.logger.debug('EspoCRM API error response body:', error.response.body);
+			this.logger.debug('EspoCrm API error response body:', error.response.body);
 		}
 		// Enhanced error handling with status code information
 		if (error.response) {
@@ -79,7 +79,7 @@ export async function espoApiRequest(
 
             throw new NodeOperationError(
                 this.getNode(),
-                `EspoCRM API error: ${errorMessage}. Status: ${statusCode}${
+                `EspoCrm API error: ${errorMessage}. Status: ${statusCode}${
                     statusReason ? `. Reason: ${statusReason}` : ''
                 }`,
             );
