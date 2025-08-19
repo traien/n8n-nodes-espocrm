@@ -15,6 +15,7 @@ The EspoCRM node provides comprehensive access to EspoCRM's API functionality:
   - Update records (full or partial updates)
   - Delete records
   - List/search entities with advanced filtering
+  - Supported core entities: Account, Contact, Lead, Meeting, Task, Call, Opportunity, Case
 
 - **Dynamic Entity Support**
   - Work with any entity type in your EspoCRM instance
@@ -94,6 +95,17 @@ Create a new contact record with customized field values:
    - Email Address
 5. Add any additional fields as needed
 6. Connect to other nodes in your workflow
+
+### Creating a Meeting
+
+1. Add an "EspoCRM" node to your workflow
+2. Select `Meeting` as the Resource
+3. Choose `Create` as the Operation
+4. Fill in the required fields:
+  - `Name`
+  - `Start Date`
+5. Optionally set `End Date`, `Status`, `Assigned User ID`, or parent (`parentType` + `parentId`)
+6. Execute to create the meeting in EspoCRM
 
 ### Working with Dynamic Entities
 

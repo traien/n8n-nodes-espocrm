@@ -38,7 +38,8 @@ export async function espoApiRequest(
 		},
 		method,
 		body: Object.keys(body).length === 0 ? undefined : body,
-		url: endpoint,
+		// Allow overriding full URL via `uri` if provided
+		url: uri ?? endpoint,
 		qs,
 	};
 

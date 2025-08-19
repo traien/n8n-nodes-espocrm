@@ -14,6 +14,11 @@ import { accountOperations, accountFields } from './operations/account/account.o
 import { contactOperations, contactFields } from './operations/contact/contact.operations';
 import { leadOperations, leadFields } from './operations/lead/lead.operations';
 import { dynamicOperations, dynamicFields } from './operations/dynamic/dynamic.operations';
+import { meetingOperations, meetingFields } from './operations/meeting/meeting.operations';
+import { taskOperations, taskFields } from './operations/task/task.operations';
+import { callOperations, callFields } from './operations/call/call.operations';
+import { opportunityOperations, opportunityFields } from './operations/opportunity/opportunity.operations';
+import { caseOperations, caseFields } from './operations/case/case.operations';
 
 // Import handler factory
 import { HandlerFactory } from './handlers/HandlerFactory';
@@ -73,6 +78,26 @@ export class EspoCRM implements INodeType {
 						name: 'Lead',
 						value: 'lead',
 					},
+					{
+						name: 'Meeting',
+						value: 'meeting',
+					},
+					{
+						name: 'Task',
+						value: 'task',
+					},
+					{
+						name: 'Call',
+						value: 'call',
+					},
+					{
+						name: 'Opportunity',
+						value: 'opportunity',
+					},
+					{
+						name: 'Case',
+						value: 'case',
+					},
 				],
 				default: 'contact',
 			},
@@ -101,6 +126,16 @@ export class EspoCRM implements INodeType {
 			...contactFields,
 			...leadOperations,
 			...leadFields,
+			...meetingOperations,
+			...meetingFields,
+			...taskOperations,
+			...taskFields,
+			...callOperations,
+			...callFields,
+			...opportunityOperations,
+			...opportunityFields,
+			...caseOperations,
+			...caseFields,
 			...dynamicOperations,
 			...dynamicFields,
 
