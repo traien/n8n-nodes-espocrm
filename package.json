@@ -1,6 +1,6 @@
 {
   "name": "@traien/n8n-nodes-espocrm",
-  "version": "1.0.9",
+  "version": "1.1.0",
   "description": "n8n integration with EspoCRM",
   "keywords": [
     "n8n-community-node-package",
@@ -10,8 +10,8 @@
   "license": "MIT",
   "homepage": "",
   "author": {
-    "name": "Your Name",
-    "email": "your.email@example.com"
+    "name": "Osama Bashir",
+    "email": "traien93@gmail.com"
   },
   "repository": {
     "type": "git",
