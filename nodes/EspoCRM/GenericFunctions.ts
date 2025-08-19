@@ -48,7 +48,7 @@ export async function espoApiRequest(
 		const hmac = crypto.createHmac('sha256', credentials.secretKey);
 		hmac.update(hmacString);
 		const signature = hmac.digest('base64');
-		
+
 		// Format as X-Hmac-Authorization header
 		const authPart = Buffer.from(credentials.apiKey + ':').toString('base64') + signature;
 		options.headers!['X-Hmac-Authorization'] = authPart;
@@ -57,30 +57,34 @@ export async function espoApiRequest(
 		options.headers!['X-Api-Key'] = credentials.apiKey;
 	}
 
-	// Handle GET requests with JSON parameters
-	if (method === 'GET' && Object.keys(qs).length > 0) {
-		// Convert query parameters to JSON string for searchParams
-		options.qs = { searchParams: JSON.stringify(qs) };
-	}
+	this.logger.debug('EspoCRM API request options:', options);
 
 	try {
-		return await this.helpers.httpRequest({
+		const response = await this.helpers.httpRequest({
 			baseURL: `${credentials.baseUrl}/api/v1`,
 			...options,
 		});
+		this.logger.debug('EspoCRM API response:', response);
+		return response;
 	} catch (error) {
-		// Enhanced error handling with status code information
-		if (error.response && error.response.body) {
-			const errorMessage = error.response.body.message || error.message;
-			const statusCode = error.statusCode;
-			const statusReason = error.response.headers && error.response.headers['x-status-reason'] || '';
-			
-			throw new NodeOperationError(
-				this.getNode(), 
-				`EspoCRM API error: ${errorMessage}. Status: ${statusCode}${statusReason ? `. Reason: ${statusReason}` : ''}`,
-			);
+		this.logger.debug('EspoCRM API error message:', error.message);
+		if (error.response) {
+			this.logger.debug('EspoCRM API error response body:', error.response.body);
 		}
-		throw error;
+		// Enhanced error handling with status code information
+		if (error.response) {
+            const errorMessage = (error.response.body && error.response.body.message) || error.message;
+            const statusCode = error.statusCode;
+            const statusReason = (error.response.headers && error.response.headers['x-status-reason']) || '';
+
+            throw new NodeOperationError(
+                this.getNode(),
+                `EspoCRM API error: ${errorMessage}. Status: ${statusCode}${
+                    statusReason ? `. Reason: ${statusReason}` : ''
+                }`,
+            );
+        }
+        throw error;
 	}
 }
 
@@ -95,20 +99,20 @@ export async function espoApiRequestAllItems(
 	qs: IDataObject = {},
 ): Promise<any> {
 	const returnData: IDataObject[] = [];
-	
+
 	let responseData;
 	qs.maxSize = 100;
 	qs.offset = 0;
-	
+
 	do {
 		responseData = await espoApiRequest.call(this, method, endpoint, body, qs);
 		returnData.push.apply(returnData, responseData.list);
 		qs.offset = returnData.length;
 	} while (
-		responseData.total !== undefined && 
+		responseData.total !== undefined &&
 		responseData.list.length > 0 &&
 		returnData.length < responseData.total
 	);
-	
+
 	return returnData;
 }

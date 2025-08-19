@@ -40,8 +40,8 @@
       "dist/credentials/EspoCRMApi.credentials.js"
     ],
     "nodes": [
-      "dist/nodes/EspoCRM/EspoCRM.node.js",
-      "dist/nodes/EspoCRMTrigger/EspoCRMTrigger.node.js"
+      "dist/nodes/EspoCrm/EspoCrm.node.js",
+      "dist/nodes/EspoCrmTrigger/EspoCrmTrigger.node.js"
     ]
   },
   "devDependencies": {
