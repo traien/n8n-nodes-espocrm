@@ -10,8 +10,8 @@
   "license": "MIT",
   "homepage": "",
   "author": {
-    "name": "Your Name",
-    "email": "your.email@example.com"
+    "name": "Osama Bashir",
+    "email": "traien93@gmail.com"
   },
   "repository": {
     "type": "git",
@@ -40,8 +40,8 @@
       "dist/credentials/EspoCRMApi.credentials.js"
     ],
     "nodes": [
-      "dist/nodes/EspoCRM/EspoCRM.node.js",
-      "dist/nodes/EspoCRMTrigger/EspoCRMTrigger.node.js"
+      "dist/nodes/EspoCrm/EspoCrm.node.js",
+      "dist/nodes/EspoCrmTrigger/EspoCrmTrigger.node.js"
     ]
   },
   "devDependencies": {
