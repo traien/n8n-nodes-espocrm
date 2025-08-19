@@ -1,17 +1,22 @@
-name: Build and Publish
+name: Build & Publish (tags)
 
 on:
   push:
     tags:
-      - 'v*.*.*' # Matches semantic versioning tags like v1.0.0
+      - 'v*.*.*'
 
 jobs:
   build-and-publish:
     runs-on: ubuntu-latest
-    
+    permissions:
+      contents: write
+      packages: write
+
     steps:
-      - name: Checkout repository
+      - name: Checkout
         uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
 
       - name: Setup Node.js
         uses: actions/setup-node@v4
@@ -19,18 +24,16 @@ jobs:
           node-version: '18'
           registry-url: 'https://registry.npmjs.org'
 
-      - uses: pnpm/action-setup@v4
-        name: Install pnpm
-        with:
-          run_install: true
-
       - name: Install dependencies
-        run: pnpm install
+        run: npm ci
 
       - name: Build
-        run: pnpm build
+        run: npm run build
+
+      - name: Run lint (optional)
+        run: npm run lint --if-present || echo "Lint failed but continuing"
 
       - name: Publish to npm
-        run: pnpm publish --no-git-checks --access public
+        run: npm publish --access public
         env:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
