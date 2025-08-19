@@ -1,6 +1,6 @@
 {
   "name": "@traien/n8n-nodes-espocrm",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "description": "n8n integration with EspoCRM",
   "keywords": [
     "n8n-community-node-package",
@@ -27,8 +27,9 @@
     "format": "prettier nodes credentials --write",
     "lint": "eslint nodes credentials package.json",
     "lintfix": "eslint nodes credentials package.json --fix",
-    "prepublishOnly": "npm run build && npm run lint",
-    "test": "echo 'No tests specified'"
+    "prepublishOnly": "pnpm run build && pnpm run lint",
+    "test": "echo 'No tests specified'",
+    "prepare": "pnpm build"
   },
   "files": [
     "dist"
@@ -53,6 +54,7 @@
     "typescript": "^5.5.3"
   },
   "peerDependencies": {
-    "n8n-workflow": "1.48.0"
-  }
+    "n8n-workflow": "^1.48.0"
+  },
+  "packageManager": "pnpm@9.5.0+sha512.140036830124618d624a2187b50d04289d5a087f326c9edfc0ccd733d76c4f52c3a313d4fc148794a2a9d81553016004e6742e8cf850670268a7387fc220c903"
 }
