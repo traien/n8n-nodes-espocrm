@@ -7,6 +7,8 @@ import { TaskHandler } from './TaskHandler';
 import { CallHandler } from './CallHandler';
 import { OpportunityHandler } from './OpportunityHandler';
 import { CaseHandler } from './CaseHandler';
+import { AttachmentHandler } from './AttachmentHandler';
+import { DocumentHandler } from './DocumentHandler';
 import { EntityHandler } from './EntityHandler';
 
 /**
@@ -39,6 +41,10 @@ export class HandlerFactory {
         return new CaseHandler();
       case 'customEntity':
         return new CustomEntityHandler();
+      case 'attachment':
+        return new AttachmentHandler();
+      case 'document':
+        return new DocumentHandler();
       default:
         throw new Error(`Unsupported resource type: ${resource}`);
     }

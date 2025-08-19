@@ -149,6 +149,47 @@ The Dynamic resource allows you to work with any entity type in your EspoCRM sys
 }
 ```
 
+### Attachments & Documents
+
+You can upload files to EspoCRM as `Attachment` records and then create a `Document` that references the uploaded file. You can also download attachments to binary output in n8n.
+
+1) Upload an Attachment
+
+- Add an `EspoCRM` node
+- Resource: `Attachment`
+- Operation: `Upload`
+- Fields:
+  - `Binary Property`: name of the binary key on the incoming item (default `data`)
+  - `Related Type`: usually `Document` (but can be any entity supported by your instance)
+  - `Field`: usually `file` for Document’s File field
+  - `Role`: defaults to `Attachment` (other roles: Inline Attachment)
+- The node derives `name`, `type`, and `size` from the binary; you can override `name` and `type` in Additional Fields
+- Output contains the created Attachment `id`
+
+2) Create a Document linked to the uploaded file
+
+- Add a second `EspoCRM` node
+- Resource: `Document`
+- Operation: `Create`
+- Fields:
+  - `Name`: document name
+  - `File ID`: reference the Attachment `id` (from the previous step)
+  - Optional: `Publish Date` (date only is expected; we normalize inputs), `Status`, `File Name`, `Folder ID`, `Description`, `Assigned User ID`
+
+3) Download an Attachment
+
+- Add an `EspoCRM` node
+- Resource: `Attachment`
+- Operation: `Download`
+- Fields:
+  - `Attachment ID`: the Attachment record ID
+  - `Binary Property`: output key to store the file (default `data`)
+- Output: one item with `binary[Binary Property]` populated, including `fileName` and `mimeType`
+
+Notes:
+- EspoCRM may restrict allowed file types by extension/MIME. If you receive `403 Not allowed file type`, verify your instance settings and the file’s extension/MIME.
+- For attachment-multiple fields (e.g., `Note.attachments`), upload first, then create/update the parent entity with `attachmentsIds` including the returned attachment ID (remember to include existing IDs when updating to avoid unlinking).
+
 ## Resources
 
 - [EspoCRM API Documentation](https://docs.espocrm.com/development/api/)

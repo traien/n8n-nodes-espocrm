@@ -18,6 +18,8 @@ import { meetingOperations, meetingFields } from './operations/meeting/meeting.o
 import { taskOperations, taskFields } from './operations/task/task.operations';
 import { callOperations, callFields } from './operations/call/call.operations';
 import { opportunityOperations, opportunityFields } from './operations/opportunity/opportunity.operations';
+import { attachmentOperations, attachmentFields } from './operations/attachment/attachment.operations';
+import { documentOperations, documentFields } from './operations/document/document.operations';
 import { caseOperations, caseFields } from './operations/case/case.operations';
 
 // Import handler factory
@@ -98,6 +100,14 @@ export class EspoCRM implements INodeType {
 						name: 'Case',
 						value: 'case',
 					},
+					{
+						name: 'Attachment',
+						value: 'attachment',
+					},
+					{
+						name: 'Document',
+						value: 'document',
+					},
 				],
 				default: 'contact',
 			},
@@ -136,6 +146,10 @@ export class EspoCRM implements INodeType {
 			...opportunityFields,
 			...caseOperations,
 			...caseFields,
+			...attachmentOperations,
+			...attachmentFields,
+			...documentOperations,
+			...documentFields,
 			...dynamicOperations,
 			...dynamicFields,
 
@@ -540,6 +554,15 @@ export class EspoCRM implements INodeType {
 
 					// Execute the operation using the handler
 					let responseData: IDataObject | IDataObject[];
+
+
+
+					// Special-case: map attachment upload -> create
+					if (resource === 'attachment' && operation === 'upload') {
+						responseData = await handler.create.call(this, i);
+						returnData.push(responseData as IDataObject);
+						break;
+					}
 
 					switch (operation) {
 						case 'create':
