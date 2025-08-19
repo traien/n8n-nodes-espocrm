@@ -2,6 +2,11 @@ import { AccountHandler } from './AccountHandler';
 import { ContactHandler } from './ContactHandler';
 import { LeadHandler } from './LeadHandler';
 import { CustomEntityHandler } from './CustomEntityHandler';
+import { MeetingHandler } from './MeetingHandler';
+import { TaskHandler } from './TaskHandler';
+import { CallHandler } from './CallHandler';
+import { OpportunityHandler } from './OpportunityHandler';
+import { CaseHandler } from './CaseHandler';
 import { EntityHandler } from './EntityHandler';
 
 /**
@@ -10,7 +15,7 @@ import { EntityHandler } from './EntityHandler';
 export class HandlerFactory {
   /**
    * Get the appropriate handler for a given resource type
-   * 
+   *
    * @param resource The resource type from the node parameters
    * @returns The appropriate entity handler
    */
@@ -22,6 +27,16 @@ export class HandlerFactory {
         return new ContactHandler();
       case 'lead':
         return new LeadHandler();
+      case 'meeting':
+        return new MeetingHandler();
+      case 'task':
+        return new TaskHandler();
+      case 'call':
+        return new CallHandler();
+      case 'opportunity':
+        return new OpportunityHandler();
+      case 'case':
+        return new CaseHandler();
       case 'customEntity':
         return new CustomEntityHandler();
       default:
