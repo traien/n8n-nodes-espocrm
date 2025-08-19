@@ -44,5 +44,11 @@
   },
   "dependencies": {
     "n8n-workflow": "1.48.0"
+  },
+  "devDependencies": {
+    "@types/node": "^20.14.9",
+    "gulp": "^4.0.2",
+    "gulp-cli": "^2.3.0",
+    "typescript": "^5.5.3"
   }
 }
