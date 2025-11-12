@@ -13,14 +13,23 @@ import * as crypto from 'crypto';
 type IFunctions = IExecuteFunctions | ILoadOptionsFunctions | ISupplyDataFunctions;
 
 function resolveBaseUrl(this: IFunctions, rawUrl?: string): string {
-	if (!rawUrl) {
+	if (!rawUrl || rawUrl.trim() === '') {
 		throw new NodeOperationError(
 			this.getNode(),
-			'EspoCRM credentials must include a Base URL such as "https://example.espocrm.com".',
+			'EspoCRM credentials must include a Base URL such as "https://example.espocrm.com". Please check your EspoCRM API credentials configuration.',
 		);
 	}
 
 	const trimmed = rawUrl.trim();
+	
+	// Check for obviously invalid URLs
+	if (trimmed.includes(' ') || trimmed.includes('\n') || trimmed.includes('\t')) {
+		throw new NodeOperationError(
+			this.getNode(),
+			`Invalid EspoCRM Base URL "${rawUrl}" - contains whitespace. Please remove any spaces, tabs, or newlines.`,
+		);
+	}
+	
 	const withProtocol = /^https?:\/\//i.test(trimmed) ? trimmed : `https://${trimmed}`;
 	try {
 		const parsed = new URL(withProtocol);
@@ -29,7 +38,7 @@ function resolveBaseUrl(this: IFunctions, rawUrl?: string): string {
 	} catch (error) {
 		throw new NodeOperationError(
 			this.getNode(),
-			`Invalid EspoCRM Base URL "${rawUrl}". Please include the protocol (e.g. https://your-instance).`,
+			`Invalid EspoCRM Base URL "${rawUrl}". Please include the protocol (e.g. https://your-instance.espocrm.com) and ensure the URL is properly formatted.`,
 		);
 	}
 }
@@ -64,6 +73,27 @@ export async function espoApiRequest(
 		apiKey: string;
 		secretKey: string;
 	};
+
+	// Log credentials immediately for debugging
+	this.logger.debug(`[espoApiRequest] RAW credentials.baseUrl: "${credentials.baseUrl}" (length: ${credentials.baseUrl?.length ?? 0})`);
+	this.logger.debug(`[espoApiRequest] RAW endpoint: "${endpoint}" (length: ${endpoint?.length ?? 0})`);
+	this.logger.debug(`[espoApiRequest] RAW uri override: "${uri ?? 'none'}"`);
+
+	// Validate endpoint immediately
+	if (!endpoint || typeof endpoint !== 'string') {
+		throw new NodeOperationError(
+			this.getNode(),
+			`Invalid endpoint parameter: "${endpoint}" (type: ${typeof endpoint})`,
+		);
+	}
+
+	// Check for problematic characters in endpoint
+	if (endpoint.includes(' ') || endpoint.includes('\n') || endpoint.includes('\t')) {
+		throw new NodeOperationError(
+			this.getNode(),
+			`Endpoint contains whitespace: "${endpoint}". This will cause URL construction to fail.`,
+		);
+	}
 
 	const baseUrl = resolveBaseUrl.call(this, credentials.baseUrl);
 	const apiBaseUrl = `${baseUrl.replace(/\/$/, '')}/api/v1`;

@@ -1,15 +1,10 @@
-import { DynamicStructuredTool } from '@langchain/core/tools';
-import { z } from 'zod';
-
 import {
 	IDataObject,
+	IExecuteFunctions,
+	INodeExecutionData,
 	INodeType,
 	INodeTypeDescription,
-	ISupplyDataFunctions,
-	NodeConnectionTypes,
 	NodeOperationError,
-	nodeNameToToolName,
-	SupplyData,
 } from 'n8n-workflow';
 
 import { espoApiRequest, espoApiRequestAllItems } from '../EspoCRM/GenericFunctions';
@@ -17,26 +12,11 @@ import { espoApiRequest, espoApiRequestAllItems } from '../EspoCRM/GenericFuncti
 const OPERATION_VALUES = ['get', 'getAll', 'create', 'update', 'delete'] as const;
 type ToolOperation = (typeof OPERATION_VALUES)[number];
 
-const toolInputSchema = z.object({
-	entityType: z.string().min(1, 'entityType is required'),
-	operation: z.enum(OPERATION_VALUES),
-	recordId: z.string().optional(),
-	data: z
-		.string()
-		.describe('JSON object encoded as a string (e.g. "{\\"name\\":\\"Acme\\"}")')
-		.optional(),
-	filters: z
-		.string()
-		.describe('JSON object or EspoCRM "where" array encoded as a string')
-		.optional(),
-	returnAll: z.boolean().optional(),
-	limit: z.number().min(1).optional(),
-});
-
 function parseJsonInput(
 	value: string | IDataObject | undefined,
 	fieldName: string,
-	ctx: ISupplyDataFunctions,
+	ctx: IExecuteFunctions,
+	itemIndex: number,
 ): IDataObject | undefined {
 	if (!value) {
 		return undefined;
@@ -50,28 +30,12 @@ function parseJsonInput(
 		throw new NodeOperationError(
 			ctx.getNode(),
 			`Invalid JSON provided for ${fieldName}: ${(error as Error).message}`,
+			{ itemIndex },
 		);
 	}
 }
 
-const MAX_LIMIT_CAP = 500;
-
-function parseEntityList(raw: string): string[] {
-	return raw
-		.split(/[\n,]/)
-		.map((entry) => entry.trim())
-		.filter((entry) => entry.length > 0);
-}
-
-function toJsonString(payload: unknown): string {
-	if (typeof payload === 'string') {
-		return payload;
-	}
-
-	return JSON.stringify(payload, null, 2);
-}
-
-function normalizeFilters(filtersInput: unknown, ctx: ISupplyDataFunctions): IDataObject | undefined {
+function normalizeFilters(filtersInput: unknown, ctx: IExecuteFunctions, itemIndex: number): IDataObject | undefined {
 	if (filtersInput === undefined || filtersInput === null || filtersInput === '') {
 		return undefined;
 	}
@@ -80,7 +44,7 @@ function normalizeFilters(filtersInput: unknown, ctx: ISupplyDataFunctions): IDa
 		try {
 			return JSON.parse(filtersInput);
 		} catch (error) {
-			throw new NodeOperationError(ctx.getNode(), 'Failed to parse filters JSON string');
+			throw new NodeOperationError(ctx.getNode(), 'Failed to parse filters JSON string', { itemIndex });
 		}
 	}
 
@@ -88,10 +52,10 @@ function normalizeFilters(filtersInput: unknown, ctx: ISupplyDataFunctions): IDa
 		return filtersInput as IDataObject;
 	}
 
-	throw new NodeOperationError(ctx.getNode(), 'Filters must be a JSON object or JSON string');
+	throw new NodeOperationError(ctx.getNode(), 'Filters must be a JSON object or JSON string', { itemIndex });
 }
 
-function buildQueryParts(filters: IDataObject | undefined, ctx: ISupplyDataFunctions): {
+function buildQueryParts(filters: IDataObject | undefined, ctx: IExecuteFunctions, itemIndex: number): {
 	qs: IDataObject;
 	headers: IDataObject;
 } {
@@ -112,7 +76,7 @@ function buildQueryParts(filters: IDataObject | undefined, ctx: ISupplyDataFunct
 				try {
 					qs.where = JSON.parse(value);
 				} catch (error) {
-					throw new NodeOperationError(ctx.getNode(), "Invalid JSON supplied for filters.where");
+					throw new NodeOperationError(ctx.getNode(), "Invalid JSON supplied for filters.where", { itemIndex });
 				}
 			} else {
 				qs.where = value as IDataObject;
@@ -138,14 +102,14 @@ export class EspoCRMTool implements INodeType {
 		icon: 'file:espocrm.svg',
 		group: ['transform'],
 		version: 1,
+		usableAsTool: true,
 		subtitle: 'Expose EspoCRM to AI agents',
-		description: 'Expose EspoCRM REST operations as an AI tool',
+		description: 'Use this tool to interact with EspoCRM via REST API',
 		defaults: {
 			name: 'EspoCRM Tool',
 		},
-		inputs: [],
-		outputs: [NodeConnectionTypes.AiTool],
-		outputNames: ['Tool'],
+		inputs: [{ type: 'main', required: true }],
+		outputs: [{ type: 'main', required: true }],
 		documentationUrl: 'https://docs.espocrm.com/development/api/',
 		credentials: [
 			{
@@ -155,28 +119,18 @@ export class EspoCRMTool implements INodeType {
 		],
 		properties: [
 			{
-				displayName: 'Connection',
-				name: 'connectionNotice',
-				type: 'notice',
-				default: '',
-				description:
-					'Connect this node to the Tools input of an AI Agent node to make EspoCRM actions available during reasoning.',
-			},
-			{
-				displayName: 'Tool Description',
-				name: 'toolDescription',
+				displayName: 'Entity Type',
+				name: 'entityType',
 				type: 'string',
-				default:
-					'Use this tool to create, read, update, delete and search EspoCRM entities via their REST API. Always provide the entityType and any field names exactly as EspoCRM expects.',
-				typeOptions: {
-					rows: 3,
-				},
-				description: 'Short instructions shown to the agent explaining when to prefer this tool',
+				default: '',
+				required: true,
+				description: 'The EspoCRM entity type (e.g., Account, Contact, Lead)',
+				placeholder: 'Account',
 			},
 			{
-				displayName: 'Allowed Operations',
-				name: 'allowedOperations',
-				type: 'multiOptions',
+				displayName: 'Operation',
+				name: 'operation',
+				type: 'options',
 				options: [
 					{ name: 'Get Record', value: 'get' },
 					{ name: 'List/Search Records', value: 'getAll' },
@@ -184,187 +138,237 @@ export class EspoCRMTool implements INodeType {
 					{ name: 'Update Record', value: 'update' },
 					{ name: 'Delete Record', value: 'delete' },
 				],
-				default: ['get', 'getAll', 'create', 'update', 'delete'],
-				description: 'Limit which EspoCRM actions the tool will accept at runtime',
+				default: 'get',
+				required: true,
+				description: 'The operation to perform',
 			},
 			{
-				displayName: 'Entity Type Hints',
-				name: 'allowedEntityTypes',
+				displayName: 'Record ID',
+				name: 'recordId',
 				type: 'string',
-				default: 'Account,Contact,Lead,Opportunity,Case,Task,Meeting,Call,Document',
-				description:
-					'Comma or newline separated list of entity types the agent should focus on (e.g. Account,Contact). Leave blank to allow any entity type.',
-				typeOptions: {
-					rows: 2,
+				default: '',
+				displayOptions: {
+					show: {
+						operation: ['get', 'update', 'delete'],
+					},
 				},
+				required: true,
+				description: 'The ID of the record to get, update, or delete',
 			},
 			{
-				displayName: 'Strictly Enforce Entity List',
-				name: 'enforceEntityList',
+				displayName: 'Data',
+				name: 'data',
+				type: 'json',
+				default: '{}',
+				displayOptions: {
+					show: {
+						operation: ['create', 'update'],
+					},
+				},
+				required: true,
+				description: 'The data object with fields to create or update',
+			},
+			{
+				displayName: 'Filters',
+				name: 'filters',
+				type: 'json',
+				default: '{}',
+				displayOptions: {
+					show: {
+						operation: ['getAll'],
+					},
+				},
+				description: 'Filters to apply to the search (EspoCRM where clause)',
+			},
+			{
+				displayName: 'Return All',
+				name: 'returnAll',
 				type: 'boolean',
 				default: false,
-				description: 'When enabled the tool will reject requests for entity types not listed above',
+				displayOptions: {
+					show: {
+						operation: ['getAll'],
+					},
+				},
+				description: 'Whether to return all results or use pagination',
 			},
 			{
-				displayName: 'Default Limit',
-				name: 'defaultLimit',
+				displayName: 'Limit',
+				name: 'limit',
 				type: 'number',
 				default: 50,
 				typeOptions: {
 					minValue: 1,
-					maxValue: MAX_LIMIT_CAP,
+					maxValue: 500,
 				},
-				description: 'Used when the agent does not supply a limit for list/search operations',
-			},
-			{
-				displayName: 'Maximum Limit',
-				name: 'maxLimit',
-				type: 'number',
-				default: 200,
-				typeOptions: {
-					minValue: 1,
-					maxValue: MAX_LIMIT_CAP,
+				displayOptions: {
+					show: {
+						operation: ['getAll'],
+						returnAll: [false],
+					},
 				},
-				description: 'Hard cap applied to the limit requested by the agent to protect the Espo instance',
+				description: 'Maximum number of records to return',
 			},
 		],
 	};
 
-	async supplyData(this: ISupplyDataFunctions, itemIndex: number): Promise<SupplyData> {
-		const node = this.getNode();
-		const toolName = nodeNameToToolName(node);
+	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
+		const items = this.getInputData();
+		const returnData: INodeExecutionData[] = [];
 
-		const toolDescription = this.getNodeParameter('toolDescription', itemIndex, '') as string;
-		const allowedOperations = this.getNodeParameter('allowedOperations', itemIndex, OPERATION_VALUES) as ToolOperation[];
-		const entityTypeHints = parseEntityList(
-			this.getNodeParameter('allowedEntityTypes', itemIndex, '') as string,
-		);
-		const enforceEntityList = this.getNodeParameter('enforceEntityList', itemIndex, false) as boolean;
-		const defaultLimit = this.getNodeParameter('defaultLimit', itemIndex, 50) as number;
-		const maxLimit = this.getNodeParameter('maxLimit', itemIndex, 200) as number;
+		for (let i = 0; i < items.length; i++) {
+			try {
+				const entityType = (this.getNodeParameter('entityType', i) as string).trim();
+				const operation = this.getNodeParameter('operation', i) as ToolOperation;
 
-		const sanitizedDefaultLimit = Math.max(1, Math.min(defaultLimit, MAX_LIMIT_CAP, maxLimit));
-		const sanitizedMaxLimit = Math.max(1, Math.min(maxLimit, MAX_LIMIT_CAP));
-
-		const descriptionParts = [toolDescription.trim()].filter(Boolean);
-		descriptionParts.push(`Allowed operations: ${allowedOperations.join(', ')}.`);
-		if (entityTypeHints.length) {
-			descriptionParts.push(`Preferred entity types: ${entityTypeHints.join(', ')}.`);
-		}
-		descriptionParts.push(
-			'Supply entityType, operation, and optional data/filters. Use recordId for single-record actions. Filters should follow EspoCRM "where" syntax and can be passed as JSON arrays.',
-		);
-		descriptionParts.push(
-			`List/search requests default to limit ${sanitizedDefaultLimit} and are capped at ${sanitizedMaxLimit}. Set returnAll=true to stream through full pagination when necessary.`,
-		);
-
-		const description = descriptionParts.join(' ');
-		const allowedOperationSet = new Set<ToolOperation>(allowedOperations);
-		const entityHintSet = new Set(entityTypeHints.map((value) => value.toLowerCase()));
-
-		const ctx = this;
-
-		const tool = new DynamicStructuredTool({
-			name: toolName,
-			description,
-			schema: toolInputSchema,
-			func: async (input: z.infer<typeof toolInputSchema>) => {
-				const { entityType: rawEntityType, operation, recordId, data, filters, returnAll, limit } = input;
-				ctx.logger.debug(`[EspoCRM Tool] incoming input: ${JSON.stringify(input)}`);
-				const entityType = rawEntityType?.trim();
-
+				// Validate entityType format to prevent URL construction errors
 				if (!entityType) {
-					throw new NodeOperationError(ctx.getNode(), 'entityType is required');
+					throw new NodeOperationError(this.getNode(), 'entityType is required', { itemIndex: i });
 				}
 
-				if (!allowedOperationSet.has(operation as ToolOperation)) {
-					throw new NodeOperationError(ctx.getNode(), `Operation "${operation}" is disabled for this tool`);
-				}
-
-				if (enforceEntityList && entityHintSet.size > 0 && !entityHintSet.has(entityType.toLowerCase())) {
+				if (!/^[a-zA-Z0-9_-]+$/.test(entityType)) {
 					throw new NodeOperationError(
-						ctx.getNode(),
-						`Entity type "${entityType}" is not permitted. Allowed entity types: ${entityTypeHints.join(', ')}`,
+						this.getNode(),
+						`Invalid entityType: "${entityType}". Entity type must contain only letters, numbers, underscores, or hyphens.`,
+						{ itemIndex: i },
 					);
 				}
 
-				const parsedData = parseJsonInput(data, 'data', ctx);
-				const parsedFiltersInput = parseJsonInput(filters, 'filters', ctx);
 				const encodedEntityType = encodeURIComponent(entityType);
 				const endpoint = `/${encodedEntityType}`;
-				const encodeId = (value: string) => encodeURIComponent(value);
 
-				ctx.logger.debug(
-					`[EspoCRM Tool] op=${operation} entity=${entityType} encodedEntity=${encodedEntityType} recordId=${recordId ?? 'n/a'} returnAll=${returnAll ?? false} limit=${limit ?? 'n/a'} endpoint=${endpoint}`,
+				this.logger.debug(
+					`[EspoCRM Tool] op=${operation} entity=${entityType} encodedEntity=${encodedEntityType} endpoint=${endpoint}`,
 				);
-				ctx.logger.debug(
-					`[EspoCRM Tool] filters=${parsedFiltersInput ? JSON.stringify(parsedFiltersInput).slice(0, 500) : 'none'} data=${parsedData ? JSON.stringify(parsedData).slice(0, 500) : 'none'}`,
-				);
-				const parsedFilters = normalizeFilters(parsedFiltersInput, ctx);
-				const { qs, headers } = buildQueryParts(parsedFilters, ctx);
 
-				switch (operation as ToolOperation) {
+				let result: any;
+
+				switch (operation) {
 					case 'get': {
+						const recordId = (this.getNodeParameter('recordId', i) as string).trim();
+						
 						if (!recordId) {
-							throw new NodeOperationError(ctx.getNode(), 'recordId is required for get operations');
+							throw new NodeOperationError(this.getNode(), 'recordId is required for get operations', { itemIndex: i });
 						}
-						const response = await espoApiRequest.call(ctx, 'GET', `${endpoint}/${encodeId(recordId)}`);
-						return toJsonString(response);
+
+						// Validate recordId format
+						if (!/^[a-zA-Z0-9_-]+$/.test(recordId)) {
+							throw new NodeOperationError(
+								this.getNode(),
+								`Invalid recordId: "${recordId}". Record ID must contain only letters, numbers, underscores, or hyphens.`,
+								{ itemIndex: i },
+							);
+						}
+
+						const encodeId = (value: string) => encodeURIComponent(value);
+						result = await espoApiRequest.call(this, 'GET', `${endpoint}/${encodeId(recordId)}`);
+						break;
 					}
+
 					case 'delete': {
+						const recordId = (this.getNodeParameter('recordId', i) as string).trim();
+						
 						if (!recordId) {
-							throw new NodeOperationError(ctx.getNode(), 'recordId is required for delete operations');
+							throw new NodeOperationError(this.getNode(), 'recordId is required for delete operations', { itemIndex: i });
 						}
-						await espoApiRequest.call(ctx, 'DELETE', `${endpoint}/${encodeId(recordId)}`);
-						return toJsonString({ success: true, entityType, id: recordId });
+
+						if (!/^[a-zA-Z0-9_-]+$/.test(recordId)) {
+							throw new NodeOperationError(
+								this.getNode(),
+								`Invalid recordId: "${recordId}". Record ID must contain only letters, numbers, underscores, or hyphens.`,
+								{ itemIndex: i },
+							);
+						}
+
+						const encodeId = (value: string) => encodeURIComponent(value);
+						await espoApiRequest.call(this, 'DELETE', `${endpoint}/${encodeId(recordId)}`);
+						result = { success: true, entityType, id: recordId };
+						break;
 					}
+
 					case 'update': {
+						const recordId = (this.getNodeParameter('recordId', i) as string).trim();
+						
 						if (!recordId) {
-							throw new NodeOperationError(ctx.getNode(), 'recordId is required for update operations');
+							throw new NodeOperationError(this.getNode(), 'recordId is required for update operations', { itemIndex: i });
 						}
+
+						if (!/^[a-zA-Z0-9_-]+$/.test(recordId)) {
+							throw new NodeOperationError(
+								this.getNode(),
+								`Invalid recordId: "${recordId}". Record ID must contain only letters, numbers, underscores, or hyphens.`,
+								{ itemIndex: i },
+							);
+						}
+
+						const dataRaw = this.getNodeParameter('data', i) as string | IDataObject;
+						const parsedData = parseJsonInput(dataRaw, 'data', this, i);
+						
 						if (!parsedData || Object.keys(parsedData).length === 0) {
-							throw new NodeOperationError(ctx.getNode(), 'Provide a data object with fields to update');
+							throw new NodeOperationError(this.getNode(), 'Provide a data object with fields to update', { itemIndex: i });
 						}
-						const response = await espoApiRequest.call(ctx, 'PATCH', `${endpoint}/${encodeId(recordId)}`, parsedData as IDataObject);
-						return toJsonString(response);
+
+						const encodeId = (value: string) => encodeURIComponent(value);
+						result = await espoApiRequest.call(this, 'PATCH', `${endpoint}/${encodeId(recordId)}`, parsedData as IDataObject);
+						break;
 					}
+
 					case 'create': {
+						const dataRaw = this.getNodeParameter('data', i) as string | IDataObject;
+						const parsedData = parseJsonInput(dataRaw, 'data', this, i);
+						
 						if (!parsedData || Object.keys(parsedData).length === 0) {
-							throw new NodeOperationError(ctx.getNode(), 'Provide a data object with fields to create');
+							throw new NodeOperationError(this.getNode(), 'Provide a data object with fields to create', { itemIndex: i });
 						}
-						const response = await espoApiRequest.call(ctx, 'POST', endpoint, parsedData as IDataObject);
-						return toJsonString(response);
+
+						result = await espoApiRequest.call(this, 'POST', endpoint, parsedData as IDataObject);
+						break;
 					}
+
 					case 'getAll': {
-						const shouldReturnAll = returnAll === true;
-						if (shouldReturnAll) {
-							const items = await espoApiRequestAllItems.call(ctx, 'GET', endpoint, {}, qs);
-							return toJsonString(items);
-						}
+						const filtersRaw = this.getNodeParameter('filters', i, '{}') as string | IDataObject;
+						const returnAll = this.getNodeParameter('returnAll', i, false) as boolean;
+						const limit = this.getNodeParameter('limit', i, 50) as number;
 
-						const cappedLimit = Math.max(
-							1,
-							Math.min(limit ?? sanitizedDefaultLimit, sanitizedMaxLimit, MAX_LIMIT_CAP),
-						);
-						qs.maxSize = cappedLimit;
-						const response = await espoApiRequest.call(ctx, 'GET', endpoint, {}, qs, undefined, headers);
-						if (Array.isArray((response as IDataObject).list)) {
-							return toJsonString((response as IDataObject).list);
+						const parsedFiltersInput = parseJsonInput(filtersRaw, 'filters', this, i);
+						const parsedFilters = normalizeFilters(parsedFiltersInput, this, i);
+						const { qs, headers } = buildQueryParts(parsedFilters, this, i);
+
+						if (returnAll) {
+							const items = await espoApiRequestAllItems.call(this, 'GET', endpoint, {}, qs);
+							result = items;
+						} else {
+							const cappedLimit = Math.max(1, Math.min(limit, 500));
+							qs.maxSize = cappedLimit;
+							const response = await espoApiRequest.call(this, 'GET', endpoint, {}, qs, undefined, headers);
+							if (Array.isArray((response as IDataObject).list)) {
+								result = (response as IDataObject).list;
+							} else {
+								result = response;
+							}
 						}
-						return toJsonString(response);
+						break;
 					}
-					default:
-						throw new NodeOperationError(ctx.getNode(), `Operation "${operation}" is not supported`);
-				}
-			},
-		});
 
-		return {
-			response: tool,
-			metadata: {
-				allowedOperations,
-				entityTypes: entityTypeHints,
-			},
-		};
+					default:
+						throw new NodeOperationError(this.getNode(), `Operation "${operation}" is not supported`, { itemIndex: i });
+				}
+
+				returnData.push({
+					json: typeof result === 'string' ? { result } : result,
+					pairedItem: { item: i },
+				});
+
+			} catch (error: any) {
+				if (!this.continueOnFail()) throw error;
+				
+				returnData.push({
+					json: { error: error.message },
+					pairedItem: { item: i },
+				});
+			}
+		}
+
+		return [returnData];
 	}
 }
