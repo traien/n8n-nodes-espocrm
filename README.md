@@ -35,6 +35,11 @@ The EspoCRM node provides comprehensive access to EspoCRM's API functionality:
   - Skip total count for large datasets
   - Duplicate checking control
 
+- **AI Agent Tooling**
+  - Dedicated `EspoCRM Tool` node that outputs an AI Tool connection for n8n Agents
+  - Configure which entities and operations the agent may call plus safe pagination defaults
+  - Agent requests are translated into authenticated EspoCRM REST calls automatically
+
 ## Prerequisites
 
 - Active EspoCRM instance (v6.0 or later recommended)
@@ -149,6 +154,35 @@ The Dynamic resource allows you to work with any entity type in your EspoCRM sys
 }
 ```
 
+## Using EspoCRM as an AI Agent Tool
+
+The package now ships with an `EspoCRM Tool` node that emits an AI Tool connection compatible with n8n's Agent/LLM nodes. Use it to let an agent autonomously read and modify EspoCRM data:
+
+1. Drop the **EspoCRM Tool** node into the same workflow as your Agent node and select your Espo credentials.
+2. Provide a concise tool description plus the entity types/operations you want to expose (e.g. `Account,Contact,Opportunity`).
+3. Connect the node to the Agent's **Tools** input. At runtime the agent can call EspoCRM by sending structured parameters that map to the API.
+
+The tool expects JSON with the following shape:
+
+```json
+{
+  "entityType": "Contact",
+  "operation": "getAll",
+  "filters": {
+    "where": [
+      { "type": "equals", "field": "accountId", "value": "ACCOUNT_ID" }
+    ],
+    "orderBy": "createdAt",
+    "order": "desc"
+  },
+  "limit": 25
+}
+```
+
+Supported operations are `get`, `getAll`, `create`, `update`, and `delete`. For single-record actions include `recordId`; for creates/updates add a `data` object with Espo field names. List requests inherit the default/max limits you configure on the node, and you can set `returnAll: true` when the agent needs the full dataset.
+
+> ℹ️ When invoking the tool from an AI Agent, pass `data` and `filters` as JSON strings (for example `"{\\"name\\":\\"Acme\\"}"`). The node parses these strings before issuing the EspoCRM REST call.
+
 ### Attachments & Documents
 
 You can upload files to EspoCRM as `Attachment` records and then create a `Document` that references the uploaded file. You can also download attachments to binary output in n8n.
@@ -206,13 +240,15 @@ Notes:
 To run a local version of n8n with this node for development, you can use the following Docker command. Make sure to replace `/path/to/your/local/n8n-espocrm` with the absolute path to this repository on your machine.
 
 ```bash
-docker run -it --rm \\
- --name n8n \\
- -p 5678:5678 \\
- -e N8N_ENFORCE_SETTINGS_FILE_PERMISSIONS=true \\
- -e N8N_RUNNERS_ENABLED=true \\
- -e N8N_LOG_LEVEL=debug -v n8n_data:/home/node/.n8n \\
- -v /path/to/your/local/n8n-espocrm:/home/node/.n8n/custom/n8n-espocrm
+docker run -it --rm \
+  --name n8n \
+  -p 5678:5678 \
+  -e N8N_ENFORCE_SETTINGS_FILE_PERMISSIONS=true \
+  -e N8N_RUNNERS_ENABLED=true \
+  -e N8N_LOG_LEVEL=debug \
+  -v n8n_data:/home/node/.n8n \
+  -v /path/to/your/local/n8n-espocrm:/home/node/.n8n/custom/n8n-espocrm \
+  n8nio/n8n
 ```
 
 ## License

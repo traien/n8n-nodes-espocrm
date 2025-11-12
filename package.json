@@ -39,11 +39,14 @@
     ],
     "nodes": [
       "dist/nodes/EspoCRM/EspoCRM.node.js",
-      "dist/nodes/EspoCRMTrigger/EspoCRMTrigger.node.js"
+      "dist/nodes/EspoCRMTrigger/EspoCRMTrigger.node.js",
+      "dist/nodes/EspoCRMTool/EspoCRMTool.node.js"
     ]
   },
   "dependencies": {
-    "n8n-workflow": "1.48.0"
+    "@langchain/core": "^1.0.4",
+    "n8n-workflow": "1.117.0",
+    "zod": "^4.1.12"
   },
   "devDependencies": {
     "@types/node": "^20.14.9",
