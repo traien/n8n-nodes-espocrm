@@ -1,6 +1,6 @@
 {
   "name": "@traien/n8n-nodes-espocrm",
-  "version": "1.1.6",
+  "version": "1.1.7",
   "description": "n8n integration with EspoCRM",
   "keywords": [
     "n8n-community-node-package",
@@ -44,9 +44,7 @@
     ]
   },
   "dependencies": {
-    "@langchain/core": "^1.0.4",
-    "n8n-workflow": "1.117.0",
-    "zod": "^4.1.12"
+    "n8n-workflow": "1.117.0"
   },
   "devDependencies": {
     "@types/node": "^20.14.9",

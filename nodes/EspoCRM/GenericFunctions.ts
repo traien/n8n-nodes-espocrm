@@ -74,11 +74,6 @@ export async function espoApiRequest(
 		secretKey: string;
 	};
 
-	// Log credentials immediately for debugging
-	this.logger.debug(`[espoApiRequest] RAW credentials.baseUrl: "${credentials.baseUrl}" (length: ${credentials.baseUrl?.length ?? 0})`);
-	this.logger.debug(`[espoApiRequest] RAW endpoint: "${endpoint}" (length: ${endpoint?.length ?? 0})`);
-	this.logger.debug(`[espoApiRequest] RAW uri override: "${uri ?? 'none'}"`);
-
 	// Validate endpoint immediately
 	if (!endpoint || typeof endpoint !== 'string') {
 		throw new NodeOperationError(
@@ -98,10 +93,6 @@ export async function espoApiRequest(
 	const baseUrl = resolveBaseUrl.call(this, credentials.baseUrl);
 	const apiBaseUrl = `${baseUrl.replace(/\/$/, '')}/api/v1`;
 	const targetUrl = joinUrl(apiBaseUrl, uri ?? endpoint);
-	const requestContext = `method=${method} url=${targetUrl} baseUrl=${credentials.baseUrl} endpoint=${endpoint} uriOverride=${uri ?? 'n/a'}`;
-	this.logger.debug(
-		`EspoCRM resolved URL -> credentialBase: ${credentials.baseUrl}, normalizedBase: ${baseUrl}, apiBase: ${apiBaseUrl}, endpoint: ${endpoint}, uriOverride: ${uri ?? 'n/a'}, final: ${targetUrl}`,
-	);
 
 	try {
 		// Validate final URL early so we can provide useful feedback before axios throws
@@ -109,7 +100,7 @@ export async function espoApiRequest(
 	} catch (error) {
 		throw new NodeOperationError(
 			this.getNode(),
-			`Invalid EspoCRM URL constructed (${requestContext}). Final URL: ${targetUrl}. Please double-check the Base URL stored in your EspoCRM credentials and ensure entity/record IDs do not contain unsupported characters.`,
+			`Invalid EspoCRM URL constructed. Final URL: ${targetUrl}. Please double-check the Base URL in your credentials and ensure entity/record IDs do not contain invalid characters.`,
 		);
 	}
 
@@ -140,24 +131,19 @@ export async function espoApiRequest(
 		options.headers!['X-Api-Key'] = credentials.apiKey;
 	}
 
-	this.logger.debug(`EspoCRM API request ${method} ${targetUrl}`);
-
 	try {
 		const response = await this.helpers.httpRequest(options);
-		this.logger.debug('EspoCRM API response:', response);
 		return response;
 	} catch (error) {
 		const err = error as any;
-		this.logger.error(`EspoCRM API error (${requestContext})`, err);
-		let friendlyMessage = `EspoCRM API request failed (${requestContext}). ${err?.message ?? ''}`;
+		let friendlyMessage = `EspoCRM API request failed: ${method} ${endpoint}. ${err?.message ?? ''}`;
 		if (err?.code === 'ERR_INVALID_URL' || /Invalid URL/i.test(err?.message ?? '')) {
-			friendlyMessage = `Invalid URL generated for EspoCRM request (${requestContext}). Check your EspoCRM Base URL credential value plus any entity/record IDs.`;
+			friendlyMessage = `Invalid URL generated for EspoCRM request. Check your EspoCRM Base URL credential and ensure entity/record IDs do not contain invalid characters.`;
 		} else if (err?.response) {
-			this.logger.error('EspoCRM API error response body:', err.response.body);
 			const errorMessage = (err.response.body && err.response.body.message) || err.message;
 			const statusCode = err.statusCode;
 			const statusReason = (err.response.headers && err.response.headers['x-status-reason']) || '';
-			friendlyMessage = `EspoCRM API error (${requestContext}). Status: ${statusCode}${statusReason ? `. Reason: ${statusReason}` : ''}. ${errorMessage}`;
+			friendlyMessage = `EspoCRM API error: ${method} ${endpoint}. Status: ${statusCode}${statusReason ? `. Reason: ${statusReason}` : ''}. ${errorMessage}`;
 		}
 		throw new NodeOperationError(this.getNode(), friendlyMessage);
 	}
@@ -214,17 +200,13 @@ export async function espoApiRequestBinary(
 	const baseUrl = resolveBaseUrl.call(this, credentials.baseUrl);
 	const apiBaseUrl = `${baseUrl.replace(/\/$/, '')}/api/v1`;
 	const targetUrl = joinUrl(apiBaseUrl, uri ?? endpoint);
-	const requestContext = `method=${method} url=${targetUrl} baseUrl=${credentials.baseUrl} endpoint=${endpoint} uriOverride=${uri ?? 'n/a'}`;
-	this.logger.debug(
-		`EspoCRM binary resolved URL -> credentialBase: ${credentials.baseUrl}, normalizedBase: ${baseUrl}, apiBase: ${apiBaseUrl}, endpoint: ${endpoint}, uriOverride: ${uri ?? 'n/a'}, final: ${targetUrl}`,
-	);
 
 	try {
 		new URL(targetUrl);
 	} catch (error) {
 		throw new NodeOperationError(
 			this.getNode(),
-			`Invalid EspoCRM URL constructed (${requestContext}). Final URL: ${targetUrl}. Please double-check the Base URL stored in your EspoCRM credentials and ensure entity/record IDs do not contain unsupported characters.`,
+			`Invalid EspoCRM URL constructed. Final URL: ${targetUrl}. Please double-check the Base URL in your credentials and ensure entity/record IDs do not contain invalid characters.`,
 		);
 	}
 
@@ -250,8 +232,6 @@ export async function espoApiRequestBinary(
 	} else {
 		options.headers!['X-Api-Key'] = credentials.apiKey;
 	}
-
-		this.logger.debug(`EspoCRM API binary request ${method} ${targetUrl}`);
 
 	try {
 		const response = await this.helpers.httpRequest({
@@ -285,16 +265,14 @@ export async function espoApiRequestBinary(
 		return { data: buffer, headers: (response.headers || {}) as IDataObject };
 	} catch (error) {
 		const err = error as any;
-		this.logger.error(`EspoCRM API binary error (${requestContext})`, err);
-		let friendlyMessage = `EspoCRM API binary request failed (${requestContext}). ${err?.message ?? ''}`;
+		let friendlyMessage = `EspoCRM API binary request failed: ${method} ${endpoint}. ${err?.message ?? ''}`;
 		if (err?.code === 'ERR_INVALID_URL' || /Invalid URL/i.test(err?.message ?? '')) {
-			friendlyMessage = `Invalid URL generated for EspoCRM request (${requestContext}). Check your EspoCRM Base URL credential value plus any entity/record IDs.`;
+			friendlyMessage = `Invalid URL generated for EspoCRM binary request. Check your EspoCRM Base URL credential and ensure entity/record IDs do not contain invalid characters.`;
 		} else if (err?.response) {
-			this.logger.error('EspoCRM API binary error response body:', err.response.body || err.response.data);
 			const errorMessage = (err.response.body && err.response.body.message) || err.message;
 			const statusCode = err.statusCode;
 			const statusReason = (err.response.headers && err.response.headers['x-status-reason']) || '';
-			friendlyMessage = `EspoCRM API error (${requestContext}). Status: ${statusCode}${statusReason ? `. Reason: ${statusReason}` : ''}. ${errorMessage}`;
+			friendlyMessage = `EspoCRM API binary error: ${method} ${endpoint}. Status: ${statusCode}${statusReason ? `. Reason: ${statusReason}` : ''}. ${errorMessage}`;
 		}
 		throw new NodeOperationError(this.getNode(), friendlyMessage);
 	}

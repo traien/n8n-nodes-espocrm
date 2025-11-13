@@ -128,9 +128,9 @@ export class EspoCRMTool implements INodeType {
 				placeholder: 'Account',
 			},
 			{
-				displayName: 'Operation',
-				name: 'operation',
-				type: 'options',
+				displayName: 'Operations',
+				name: 'operations',
+				type: 'multiOptions',
 				options: [
 					{ name: 'Get Record', value: 'get' },
 					{ name: 'List/Search Records', value: 'getAll' },
@@ -138,9 +138,8 @@ export class EspoCRMTool implements INodeType {
 					{ name: 'Update Record', value: 'update' },
 					{ name: 'Delete Record', value: 'delete' },
 				],
-				default: 'get',
-				required: true,
-				description: 'The operation to perform',
+				default: ['get'],
+				description: 'The operations to perform. When multiple operations are selected, only operations with their required parameters filled will be executed. Operations missing required parameters will be skipped.',
 			},
 			{
 				displayName: 'Record ID',
@@ -149,10 +148,9 @@ export class EspoCRMTool implements INodeType {
 				default: '',
 				displayOptions: {
 					show: {
-						operation: ['get', 'update', 'delete'],
+						operations: ['get', 'update', 'delete'],
 					},
 				},
-				required: true,
 				description: 'The ID of the record to get, update, or delete',
 			},
 			{
@@ -162,10 +160,9 @@ export class EspoCRMTool implements INodeType {
 				default: '{}',
 				displayOptions: {
 					show: {
-						operation: ['create', 'update'],
+						operations: ['create', 'update'],
 					},
 				},
-				required: true,
 				description: 'The data object with fields to create or update',
 			},
 			{
@@ -175,7 +172,7 @@ export class EspoCRMTool implements INodeType {
 				default: '{}',
 				displayOptions: {
 					show: {
-						operation: ['getAll'],
+						operations: ['getAll'],
 					},
 				},
 				description: 'Filters to apply to the search (EspoCRM where clause)',
@@ -187,7 +184,7 @@ export class EspoCRMTool implements INodeType {
 				default: false,
 				displayOptions: {
 					show: {
-						operation: ['getAll'],
+						operations: ['getAll'],
 					},
 				},
 				description: 'Whether to return all results or use pagination',
@@ -203,7 +200,7 @@ export class EspoCRMTool implements INodeType {
 				},
 				displayOptions: {
 					show: {
-						operation: ['getAll'],
+						operations: ['getAll'],
 						returnAll: [false],
 					},
 				},
@@ -219,7 +216,7 @@ export class EspoCRMTool implements INodeType {
 		for (let i = 0; i < items.length; i++) {
 			try {
 				const entityType = (this.getNodeParameter('entityType', i) as string).trim();
-				const operation = this.getNodeParameter('operation', i) as ToolOperation;
+				const operations = this.getNodeParameter('operations', i) as ToolOperation[];
 
 				// Validate entityType format to prevent URL construction errors
 				if (!entityType) {
@@ -237,125 +234,170 @@ export class EspoCRMTool implements INodeType {
 				const encodedEntityType = encodeURIComponent(entityType);
 				const endpoint = `/${encodedEntityType}`;
 
-				this.logger.debug(
-					`[EspoCRM Tool] op=${operation} entity=${entityType} encodedEntity=${encodedEntityType} endpoint=${endpoint}`,
-				);
+				// Execute all selected operations for this item
+				const results: any[] = [];
 
-				let result: any;
+				for (const operation of operations) {
+					let result: any;
 
-				switch (operation) {
-					case 'get': {
-						const recordId = (this.getNodeParameter('recordId', i) as string).trim();
-						
-						if (!recordId) {
-							throw new NodeOperationError(this.getNode(), 'recordId is required for get operations', { itemIndex: i });
-						}
+					try {
+						switch (operation) {
+							case 'get': {
+								const recordIdRaw = this.getNodeParameter('recordId', i, '') as string;
+								const recordId = typeof recordIdRaw === 'string' ? recordIdRaw.trim() : '';
+								
+								// Skip this operation if recordId is not provided (when multiple operations selected)
+								if (!recordId) {
+									if (operations.length === 1) {
+										throw new NodeOperationError(this.getNode(), 'recordId is required for get operations', { itemIndex: i });
+									}
+									continue; // Skip this operation
+								}
 
-						// Validate recordId format
-						if (!/^[a-zA-Z0-9_-]+$/.test(recordId)) {
-							throw new NodeOperationError(
-								this.getNode(),
-								`Invalid recordId: "${recordId}". Record ID must contain only letters, numbers, underscores, or hyphens.`,
-								{ itemIndex: i },
-							);
-						}
+								// Validate recordId format
+								if (!/^[a-zA-Z0-9_-]+$/.test(recordId)) {
+									throw new NodeOperationError(
+										this.getNode(),
+										`Invalid recordId: "${recordId}". Record ID must contain only letters, numbers, underscores, or hyphens.`,
+										{ itemIndex: i },
+									);
+								}
 
-						const encodeId = (value: string) => encodeURIComponent(value);
-						result = await espoApiRequest.call(this, 'GET', `${endpoint}/${encodeId(recordId)}`);
-						break;
-					}
-
-					case 'delete': {
-						const recordId = (this.getNodeParameter('recordId', i) as string).trim();
-						
-						if (!recordId) {
-							throw new NodeOperationError(this.getNode(), 'recordId is required for delete operations', { itemIndex: i });
-						}
-
-						if (!/^[a-zA-Z0-9_-]+$/.test(recordId)) {
-							throw new NodeOperationError(
-								this.getNode(),
-								`Invalid recordId: "${recordId}". Record ID must contain only letters, numbers, underscores, or hyphens.`,
-								{ itemIndex: i },
-							);
-						}
-
-						const encodeId = (value: string) => encodeURIComponent(value);
-						await espoApiRequest.call(this, 'DELETE', `${endpoint}/${encodeId(recordId)}`);
-						result = { success: true, entityType, id: recordId };
-						break;
-					}
-
-					case 'update': {
-						const recordId = (this.getNodeParameter('recordId', i) as string).trim();
-						
-						if (!recordId) {
-							throw new NodeOperationError(this.getNode(), 'recordId is required for update operations', { itemIndex: i });
-						}
-
-						if (!/^[a-zA-Z0-9_-]+$/.test(recordId)) {
-							throw new NodeOperationError(
-								this.getNode(),
-								`Invalid recordId: "${recordId}". Record ID must contain only letters, numbers, underscores, or hyphens.`,
-								{ itemIndex: i },
-							);
-						}
-
-						const dataRaw = this.getNodeParameter('data', i) as string | IDataObject;
-						const parsedData = parseJsonInput(dataRaw, 'data', this, i);
-						
-						if (!parsedData || Object.keys(parsedData).length === 0) {
-							throw new NodeOperationError(this.getNode(), 'Provide a data object with fields to update', { itemIndex: i });
-						}
-
-						const encodeId = (value: string) => encodeURIComponent(value);
-						result = await espoApiRequest.call(this, 'PATCH', `${endpoint}/${encodeId(recordId)}`, parsedData as IDataObject);
-						break;
-					}
-
-					case 'create': {
-						const dataRaw = this.getNodeParameter('data', i) as string | IDataObject;
-						const parsedData = parseJsonInput(dataRaw, 'data', this, i);
-						
-						if (!parsedData || Object.keys(parsedData).length === 0) {
-							throw new NodeOperationError(this.getNode(), 'Provide a data object with fields to create', { itemIndex: i });
-						}
-
-						result = await espoApiRequest.call(this, 'POST', endpoint, parsedData as IDataObject);
-						break;
-					}
-
-					case 'getAll': {
-						const filtersRaw = this.getNodeParameter('filters', i, '{}') as string | IDataObject;
-						const returnAll = this.getNodeParameter('returnAll', i, false) as boolean;
-						const limit = this.getNodeParameter('limit', i, 50) as number;
-
-						const parsedFiltersInput = parseJsonInput(filtersRaw, 'filters', this, i);
-						const parsedFilters = normalizeFilters(parsedFiltersInput, this, i);
-						const { qs, headers } = buildQueryParts(parsedFilters, this, i);
-
-						if (returnAll) {
-							const items = await espoApiRequestAllItems.call(this, 'GET', endpoint, {}, qs);
-							result = items;
-						} else {
-							const cappedLimit = Math.max(1, Math.min(limit, 500));
-							qs.maxSize = cappedLimit;
-							const response = await espoApiRequest.call(this, 'GET', endpoint, {}, qs, undefined, headers);
-							if (Array.isArray((response as IDataObject).list)) {
-								result = (response as IDataObject).list;
-							} else {
-								result = response;
+								const encodeId = (value: string) => encodeURIComponent(value);
+								result = await espoApiRequest.call(this, 'GET', `${endpoint}/${encodeId(recordId)}`);
+								break;
 							}
-						}
-						break;
-					}
 
-					default:
-						throw new NodeOperationError(this.getNode(), `Operation "${operation}" is not supported`, { itemIndex: i });
+							case 'delete': {
+								const recordIdRaw = this.getNodeParameter('recordId', i, '') as string;
+								const recordId = typeof recordIdRaw === 'string' ? recordIdRaw.trim() : '';
+								
+								// Skip this operation if recordId is not provided (when multiple operations selected)
+								if (!recordId) {
+									if (operations.length === 1) {
+										throw new NodeOperationError(this.getNode(), 'recordId is required for delete operations', { itemIndex: i });
+									}
+									continue; // Skip this operation
+								}
+
+								if (!/^[a-zA-Z0-9_-]+$/.test(recordId)) {
+									throw new NodeOperationError(
+										this.getNode(),
+										`Invalid recordId: "${recordId}". Record ID must contain only letters, numbers, underscores, or hyphens.`,
+										{ itemIndex: i },
+									);
+								}
+
+							const encodeId = (value: string) => encodeURIComponent(value);
+							await espoApiRequest.call(this, 'DELETE', `${endpoint}/${encodeId(recordId)}`);
+							result = { success: true, entityType, id: recordId };
+							break;
+						}
+
+						case 'update': {
+								const recordIdRaw = this.getNodeParameter('recordId', i, '') as string;
+								const recordId = typeof recordIdRaw === 'string' ? recordIdRaw.trim() : '';
+								
+								// Skip this operation if recordId is not provided (when multiple operations selected)
+								if (!recordId) {
+									if (operations.length === 1) {
+										throw new NodeOperationError(this.getNode(), 'recordId is required for update operations', { itemIndex: i });
+									}
+									continue; // Skip this operation
+								}
+
+								if (!/^[a-zA-Z0-9_-]+$/.test(recordId)) {
+									throw new NodeOperationError(
+										this.getNode(),
+										`Invalid recordId: "${recordId}". Record ID must contain only letters, numbers, underscores, or hyphens.`,
+										{ itemIndex: i },
+									);
+								}
+
+								const dataRaw = this.getNodeParameter('data', i, '{}') as string | IDataObject;
+								const parsedData = parseJsonInput(dataRaw, 'data', this, i);
+								
+								// Skip this operation if data is not provided (when multiple operations selected)
+								if (!parsedData || Object.keys(parsedData).length === 0) {
+									if (operations.length === 1) {
+										throw new NodeOperationError(this.getNode(), 'Provide a data object with fields to update', { itemIndex: i });
+									}
+									continue; // Skip this operation
+								}
+
+								const encodeId = (value: string) => encodeURIComponent(value);
+								result = await espoApiRequest.call(this, 'PATCH', `${endpoint}/${encodeId(recordId)}`, parsedData as IDataObject);
+								break;
+							}
+
+							case 'create': {
+								const dataRaw = this.getNodeParameter('data', i, '{}') as string | IDataObject;
+								const parsedData = parseJsonInput(dataRaw, 'data', this, i);
+								
+								// Skip this operation if data is not provided (when multiple operations selected)
+								if (!parsedData || Object.keys(parsedData).length === 0) {
+									if (operations.length === 1) {
+										throw new NodeOperationError(this.getNode(), 'Provide a data object with fields to create', { itemIndex: i });
+									}
+									continue; // Skip this operation
+								}
+
+								result = await espoApiRequest.call(this, 'POST', endpoint, parsedData as IDataObject);
+								break;
+							}
+
+						case 'getAll': {
+							const filtersRaw = this.getNodeParameter('filters', i, '{}') as string | IDataObject;
+							const returnAll = this.getNodeParameter('returnAll', i, false) as boolean;
+							const limit = this.getNodeParameter('limit', i, 50) as number;
+
+							const parsedFiltersInput = parseJsonInput(filtersRaw, 'filters', this, i);
+							const parsedFilters = normalizeFilters(parsedFiltersInput, this, i);
+							const { qs, headers } = buildQueryParts(parsedFilters, this, i);
+
+							if (returnAll) {
+								const items = await espoApiRequestAllItems.call(this, 'GET', endpoint, {}, qs);
+								result = items;
+							} else {
+								const cappedLimit = Math.max(1, Math.min(limit, 500));
+								qs.maxSize = cappedLimit;
+								const response = await espoApiRequest.call(this, 'GET', endpoint, {}, qs, undefined, headers);
+								if (Array.isArray((response as IDataObject).list)) {
+									result = (response as IDataObject).list;
+								} else {
+									result = response;
+								}
+							}
+							break;
+						}
+
+							default:
+								throw new NodeOperationError(this.getNode(), `Operation "${operation}" is not supported`, { itemIndex: i });
+						}
+
+						results.push({
+							operation,
+							result: typeof result === 'string' ? { result } : result,
+						});
+					} catch (operationError: any) {
+						// If only one operation selected, throw the error
+						// If multiple operations selected, collect the error and continue
+						if (operations.length === 1) {
+							throw operationError;
+						}
+						results.push({
+							operation,
+							result: { error: operationError.message },
+						});
+					}
 				}
 
+				// If only one operation was selected, return the result directly for backward compatibility
+				// If multiple operations were selected, return an array with all results
+				const outputJson = results.length === 1 ? results[0].result : { operations: results };
+
 				returnData.push({
-					json: typeof result === 'string' ? { result } : result,
+					json: outputJson,
 					pairedItem: { item: i },
 				});
 
