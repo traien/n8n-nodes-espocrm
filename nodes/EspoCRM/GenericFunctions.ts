@@ -1,6 +1,7 @@
 import {
 	IExecuteFunctions,
 	ILoadOptionsFunctions,
+	ISupplyDataFunctions,
 	IDataObject,
 	IHttpRequestOptions,
 	NodeOperationError,
@@ -9,7 +10,50 @@ import {
 import * as crypto from 'crypto';
 
 // Creating a type that combines the common functionalities of both types
-type IFunctions = IExecuteFunctions | ILoadOptionsFunctions;
+type IFunctions = IExecuteFunctions | ILoadOptionsFunctions | ISupplyDataFunctions;
+
+function resolveBaseUrl(this: IFunctions, rawUrl?: string): string {
+	if (!rawUrl || rawUrl.trim() === '') {
+		throw new NodeOperationError(
+			this.getNode(),
+			'EspoCRM credentials must include a Base URL such as "https://example.espocrm.com". Please check your EspoCRM API credentials configuration.',
+		);
+	}
+
+	const trimmed = rawUrl.trim();
+	
+	// Check for obviously invalid URLs
+	if (trimmed.includes(' ') || trimmed.includes('\n') || trimmed.includes('\t')) {
+		throw new NodeOperationError(
+			this.getNode(),
+			`Invalid EspoCRM Base URL "${rawUrl}" - contains whitespace. Please remove any spaces, tabs, or newlines.`,
+		);
+	}
+	
+	const withProtocol = /^https?:\/\//i.test(trimmed) ? trimmed : `https://${trimmed}`;
+	try {
+		const parsed = new URL(withProtocol);
+		const sanitizedPath = parsed.pathname.replace(/\/$/, '');
+		return `${parsed.origin}${sanitizedPath}`;
+	} catch (error) {
+		throw new NodeOperationError(
+			this.getNode(),
+			`Invalid EspoCRM Base URL "${rawUrl}". Please include the protocol (e.g. https://your-instance.espocrm.com) and ensure the URL is properly formatted.`,
+		);
+	}
+}
+
+function joinUrl(base: string, path?: string): string {
+	if (!path) {
+		return base;
+	}
+	if (/^https?:\/\//i.test(path)) {
+		return path;
+	}
+	const normalizedBase = base.endsWith('/') ? base : `${base}/`;
+	const normalizedPath = path.replace(/^\/+/, '');
+	return `${normalizedBase}${normalizedPath}`;
+}
 
 /**
  * Make an API request to EspoCRM
@@ -30,6 +74,36 @@ export async function espoApiRequest(
 		secretKey: string;
 	};
 
+	// Validate endpoint immediately
+	if (!endpoint || typeof endpoint !== 'string') {
+		throw new NodeOperationError(
+			this.getNode(),
+			`Invalid endpoint parameter: "${endpoint}" (type: ${typeof endpoint})`,
+		);
+	}
+
+	// Check for problematic characters in endpoint
+	if (endpoint.includes(' ') || endpoint.includes('\n') || endpoint.includes('\t')) {
+		throw new NodeOperationError(
+			this.getNode(),
+			`Endpoint contains whitespace: "${endpoint}". This will cause URL construction to fail.`,
+		);
+	}
+
+	const baseUrl = resolveBaseUrl.call(this, credentials.baseUrl);
+	const apiBaseUrl = `${baseUrl.replace(/\/$/, '')}/api/v1`;
+	const targetUrl = joinUrl(apiBaseUrl, uri ?? endpoint);
+
+	try {
+		// Validate final URL early so we can provide useful feedback before axios throws
+		new URL(targetUrl);
+	} catch (error) {
+		throw new NodeOperationError(
+			this.getNode(),
+			`Invalid EspoCRM URL constructed. Final URL: ${targetUrl}. Please double-check the Base URL in your credentials and ensure entity/record IDs do not contain invalid characters.`,
+		);
+	}
+
 	const options: IHttpRequestOptions = {
 		headers: {
 			'Accept': 'application/json',
@@ -38,8 +112,7 @@ export async function espoApiRequest(
 		},
 		method,
 		body: Object.keys(body).length === 0 ? undefined : body,
-		// Allow overriding full URL via `uri` if provided
-		url: uri ?? endpoint,
+		url: targetUrl,
 		qs,
 	};
 
@@ -58,34 +131,21 @@ export async function espoApiRequest(
 		options.headers!['X-Api-Key'] = credentials.apiKey;
 	}
 
-	this.logger.debug('EspoCRM API request options:', options);
-
 	try {
-		const response = await this.helpers.httpRequest({
-			baseURL: `${credentials.baseUrl}/api/v1`,
-			...options,
-		});
-		this.logger.debug('EspoCRM API response:', response);
+		const response = await this.helpers.httpRequest(options);
 		return response;
 	} catch (error) {
-		this.logger.debug('EspoCRM API error message:', error.message);
-		if (error.response) {
-			this.logger.debug('EspoCRM API error response body:', error.response.body);
+		const err = error as any;
+		let friendlyMessage = `EspoCRM API request failed: ${method} ${endpoint}. ${err?.message ?? ''}`;
+		if (err?.code === 'ERR_INVALID_URL' || /Invalid URL/i.test(err?.message ?? '')) {
+			friendlyMessage = `Invalid URL generated for EspoCRM request. Check your EspoCRM Base URL credential and ensure entity/record IDs do not contain invalid characters.`;
+		} else if (err?.response) {
+			const errorMessage = (err.response.body && err.response.body.message) || err.message;
+			const statusCode = err.statusCode;
+			const statusReason = (err.response.headers && err.response.headers['x-status-reason']) || '';
+			friendlyMessage = `EspoCRM API error: ${method} ${endpoint}. Status: ${statusCode}${statusReason ? `. Reason: ${statusReason}` : ''}. ${errorMessage}`;
 		}
-		// Enhanced error handling with status code information
-		if (error.response) {
-            const errorMessage = (error.response.body && error.response.body.message) || error.message;
-            const statusCode = error.statusCode;
-            const statusReason = (error.response.headers && error.response.headers['x-status-reason']) || '';
-
-            throw new NodeOperationError(
-                this.getNode(),
-                `EspoCRM API error: ${errorMessage}. Status: ${statusCode}${
-                    statusReason ? `. Reason: ${statusReason}` : ''
-                }`,
-            );
-        }
-        throw error;
+		throw new NodeOperationError(this.getNode(), friendlyMessage);
 	}
 }
 
@@ -93,7 +153,7 @@ export async function espoApiRequest(
  * Make an API request to fetch all items
  */
 export async function espoApiRequestAllItems(
-	this: IExecuteFunctions,
+	this: IExecuteFunctions | ISupplyDataFunctions,
 	method: IHttpRequestMethods,
 	endpoint: string,
 	body: IDataObject = {},
@@ -137,13 +197,26 @@ export async function espoApiRequestBinary(
 		secretKey: string;
 	};
 
+	const baseUrl = resolveBaseUrl.call(this, credentials.baseUrl);
+	const apiBaseUrl = `${baseUrl.replace(/\/$/, '')}/api/v1`;
+	const targetUrl = joinUrl(apiBaseUrl, uri ?? endpoint);
+
+	try {
+		new URL(targetUrl);
+	} catch (error) {
+		throw new NodeOperationError(
+			this.getNode(),
+			`Invalid EspoCRM URL constructed. Final URL: ${targetUrl}. Please double-check the Base URL in your credentials and ensure entity/record IDs do not contain invalid characters.`,
+		);
+	}
+
 	const options: IHttpRequestOptions = {
 		headers: {
 			'Accept': 'application/octet-stream,*/*',
 			...headers,
 		},
 		method,
-		url: uri ?? endpoint,
+		url: targetUrl,
 		qs,
 		// Request binary by disabling encoding; n8n returns Buffer when encoding is null
 		encoding: null as any,
@@ -160,11 +233,8 @@ export async function espoApiRequestBinary(
 		options.headers!['X-Api-Key'] = credentials.apiKey;
 	}
 
-	this.logger.debug('EspoCRM API binary request options:', options);
-
 	try {
 		const response = await this.helpers.httpRequest({
-			baseURL: `${credentials.baseUrl}/api/v1`,
 			...options,
 			returnFullResponse: true,
 		});
@@ -194,19 +264,16 @@ export async function espoApiRequestBinary(
 		}
 		return { data: buffer, headers: (response.headers || {}) as IDataObject };
 	} catch (error) {
-		this.logger.debug('EspoCRM API binary error message:', error.message);
-		if (error.response) {
-			this.logger.debug('EspoCRM API binary error response body:', error.response.body || error.response.data);
+		const err = error as any;
+		let friendlyMessage = `EspoCRM API binary request failed: ${method} ${endpoint}. ${err?.message ?? ''}`;
+		if (err?.code === 'ERR_INVALID_URL' || /Invalid URL/i.test(err?.message ?? '')) {
+			friendlyMessage = `Invalid URL generated for EspoCRM binary request. Check your EspoCRM Base URL credential and ensure entity/record IDs do not contain invalid characters.`;
+		} else if (err?.response) {
+			const errorMessage = (err.response.body && err.response.body.message) || err.message;
+			const statusCode = err.statusCode;
+			const statusReason = (err.response.headers && err.response.headers['x-status-reason']) || '';
+			friendlyMessage = `EspoCRM API binary error: ${method} ${endpoint}. Status: ${statusCode}${statusReason ? `. Reason: ${statusReason}` : ''}. ${errorMessage}`;
 		}
-		if (error.response) {
-			const errorMessage = (error.response.body && error.response.body.message) || error.message;
-			const statusCode = error.statusCode;
-			const statusReason = (error.response.headers && error.response.headers['x-status-reason']) || '';
-			throw new NodeOperationError(
-				this.getNode(),
-				`EspoCRM API error: ${errorMessage}. Status: ${statusCode}${statusReason ? `. Reason: ${statusReason}` : ''}`,
-			);
-		}
-		throw error;
+		throw new NodeOperationError(this.getNode(), friendlyMessage);
 	}
 }

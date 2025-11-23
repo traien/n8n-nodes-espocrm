@@ -17,7 +17,8 @@ export class EspoCRMApi implements ICredentialType {
 			default: '',
 			placeholder: 'https://example.espocrm.com',
 			required: true,
-			description: 'The base URL of your EspoCRM instance',
+			description: 'The base URL of your EspoCRM instance (must include https:// or http://)',
+			validateType: 'url',
 		},
 		{
 			displayName: 'Authentication Type',
