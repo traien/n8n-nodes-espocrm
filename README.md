@@ -181,7 +181,7 @@ The tool expects JSON with the following shape:
 
 Supported operations are `get`, `getAll`, `create`, `update`, and `delete`. For single-record actions include `recordId`; for creates/updates add a `data` object with Espo field names. List requests inherit the default/max limits you configure on the node, and you can set `returnAll: true` when the agent needs the full dataset.
 
-> ℹ️ When invoking the tool from an AI Agent, pass `data` and `filters` as JSON strings (for example `"{\\"name\\":\\"Acme\\"}"`). The node parses these strings before issuing the EspoCRM REST call.
+> ℹ️ When invoking the tool from an AI Agent, `data` and `filters` can be provided either as native JSON objects or as JSON strings (for example `"{\\"name\\":\\"Acme\\"}"`). The node automatically parses strings into objects before sending the EspoCRM REST call. You can also override the requested operation by including `operation` or `operations` in the payload (for example `{ "operation": "getAll" }` or `{ "operations": ["get", "update"] }`); requested values are validated against the operations enabled on the node. When no override is provided, the operations selected in the node panel act as defaults.
 
 ### Attachments & Documents
 
@@ -246,6 +246,7 @@ docker run -it --rm \
   -e N8N_ENFORCE_SETTINGS_FILE_PERMISSIONS=true \
   -e N8N_RUNNERS_ENABLED=true \
   -e N8N_LOG_LEVEL=debug \
+  -e N8N_COMMUNITY_PACKAGES_ALLOW_TOOL_USAGE=true \
   -v n8n_data:/home/node/.n8n \
   -v /path/to/your/local/n8n-espocrm:/home/node/.n8n/custom/n8n-espocrm \
   n8nio/n8n
