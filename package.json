@@ -1,6 +1,6 @@
 {
   "name": "@traien/n8n-nodes-espocrm",
-  "version": "1.2.0",
+  "version": "1.2.1",
   "description": "n8n integration with EspoCRM",
   "keywords": [
     "n8n-community-node-package",
@@ -43,10 +43,9 @@
       "dist/nodes/EspoCRMTool/EspoCRMTool.node.js"
     ]
   },
-  "dependencies": {
-    "n8n-workflow": "1.117.0"
-  },
+  "dependencies": {},
   "devDependencies": {
+    "n8n-workflow": "1.117.0",
     "@types/node": "^20.14.9",
     "gulp": "^4.0.2",
     "gulp-cli": "^2.3.0",
