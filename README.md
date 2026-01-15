@@ -237,7 +237,59 @@ Notes:
 
 ## Development
 
-To run a local version of n8n with this node for development, you can use the following Docker command. Make sure to replace `/path/to/your/local/n8n-espocrm` with the absolute path to this repository on your machine.
+### Local Development on macOS (npm)
+
+For local development on macOS with n8n installed globally via npm:
+
+1. **Install n8n globally** (if not already installed):
+   ```bash
+   npm install -g n8n
+   ```
+
+2. **Clone and build the package**:
+   ```bash
+   git clone https://github.com/traien/n8n-nodes-espocrm.git
+   cd n8n-nodes-espocrm
+   npm install
+   npm run build
+   ```
+
+3. **Link the package to n8n's custom nodes folder**:
+   ```bash
+   # Create package.json in n8n's nodes folder if it doesn't exist
+   mkdir -p ~/.n8n/nodes
+   cd ~/.n8n/nodes
+   echo '{"name": "installed-nodes", "private": true}' > package.json
+   
+   # Install the local package (creates a symlink)
+   npm install /path/to/your/n8n-espocrm
+   ```
+
+4. **Start n8n**:
+   ```bash
+   n8n start
+   ```
+   Access n8n at http://localhost:5678
+
+5. **Development workflow**:
+   ```bash
+   # After making changes to the source code:
+   cd /path/to/your/n8n-espocrm
+   npm run build
+   
+   # Restart n8n to pick up changes (Ctrl+C to stop, then):
+   n8n start
+   ```
+
+6. **Watch mode** (optional - auto-rebuild on changes):
+   ```bash
+   npm run dev
+   ```
+   Note: You still need to restart n8n after rebuilds.
+
+### Docker Development
+
+To run a local version of n8n with this node for development using Docker. Make sure to replace `/path/to/your/local/n8n-espocrm` with the absolute path to this repository on your machine.
 
 ```bash
 docker run -it --rm \
@@ -251,6 +303,15 @@ docker run -it --rm \
   -v /path/to/your/local/n8n-espocrm:/home/node/.n8n/custom/n8n-espocrm \
   n8nio/n8n
 ```
+
+### Useful Commands
+
+| Command | Description |
+|---------|-------------|
+| `npm run build` | Compile TypeScript and copy icons |
+| `npm run dev` | Watch mode for active development |
+| `npm run lintfix` | Auto-fix ESLint issues |
+| `npm run lint` | Check for linting errors |
 
 ## License
 
