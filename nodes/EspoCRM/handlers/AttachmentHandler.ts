@@ -6,11 +6,16 @@ export class AttachmentHandler implements EntityHandler {
   async create(this: IExecuteFunctions, index: number): Promise<IDataObject> {
     // This method will be used for "upload" operation mapped to create
     const binaryPropertyName = this.getNodeParameter('binaryPropertyName', index) as string;
-  const item = this.getInputData()[index];
+    const item = this.getInputData()[index];
     if (!item.binary || !item.binary[binaryPropertyName]) {
       throw new NodeOperationError(this.getNode(), `No binary data property "${binaryPropertyName}" exists on item!`);
     }
     const binary = item.binary[binaryPropertyName];
+
+    // Get the actual binary data buffer using n8n's helper method
+    // binary.data is just an internal reference, not the actual data
+    const binaryDataBuffer = await this.helpers.getBinaryDataBuffer(index, binaryPropertyName);
+    const base64Data = binaryDataBuffer.toString('base64');
 
     const role = (this.getNodeParameter('role', index) as string) || 'Attachment';
     const relatedType = (this.getNodeParameter('relatedType', index) as string) || 'Document';
@@ -39,13 +44,13 @@ export class AttachmentHandler implements EntityHandler {
       }
     };
     const typeFromBinary = binary.mimeType || (additionalFields.type as string) || guessMimeByExt(nameFromBinary) || 'application/octet-stream';
-    // Ensure size is a number; if not present, compute from base64 length
+    // Get size from the actual buffer
     const sizeFromBinary = typeof binary.fileSize !== 'undefined'
       ? Number(binary.fileSize)
-      : (typeof binary.data === 'string' ? Buffer.from(binary.data, 'base64').length : undefined);
+      : binaryDataBuffer.length;
 
-    // Compose data: URI
-  const dataUri = `data:${typeFromBinary};base64,${binary.data}`;
+    // Compose data: URI with the actual base64 data
+    const dataUri = `data:${typeFromBinary};base64,${base64Data}`;
 
     const body: IDataObject = {
       role,
