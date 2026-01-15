@@ -17,15 +17,58 @@ export const attachmentOperations: INodeProperties[] = [
 ];
 
 export const attachmentFields: INodeProperties[] = [
-  // Upload
+  // Upload - Input Source selector
+  {
+    displayName: 'Input Source',
+    name: 'inputSource',
+    type: 'options',
+    options: [
+      { name: 'Binary Field', value: 'binaryField', description: 'Upload from a binary property on the input item' },
+      { name: 'Base64 Direct', value: 'base64Direct', description: 'Provide base64-encoded file content directly' },
+    ],
+    default: 'binaryField',
+    description: 'Choose how to provide the file data',
+    displayOptions: { show: { resource: ['attachment'], operation: ['upload'] } },
+  },
+  // Binary Field option
   {
     displayName: 'Binary Property',
     name: 'binaryPropertyName',
     type: 'string',
     default: 'data',
     description: 'Name of the binary property to upload',
-    displayOptions: { show: { resource: ['attachment'], operation: ['upload'] } },
+    displayOptions: { show: { resource: ['attachment'], operation: ['upload'], inputSource: ['binaryField'] } },
     required: true,
+  },
+  // Base64 Direct options
+  {
+    displayName: 'Base64 Data',
+    name: 'base64Data',
+    type: 'string',
+    typeOptions: {
+      rows: 4,
+    },
+    default: '',
+    description: 'Base64-encoded file content (without data URI prefix)',
+    displayOptions: { show: { resource: ['attachment'], operation: ['upload'], inputSource: ['base64Direct'] } },
+    required: true,
+  },
+  {
+    displayName: 'File Name',
+    name: 'fileName',
+    type: 'string',
+    default: '',
+    description: 'File name with extension (e.g., document.pdf)',
+    displayOptions: { show: { resource: ['attachment'], operation: ['upload'], inputSource: ['base64Direct'] } },
+    required: true,
+  },
+  {
+    displayName: 'MIME Type',
+    name: 'mimeType',
+    type: 'string',
+    default: '',
+    description: 'MIME type of the file (e.g., application/pdf). If not provided, will be auto-detected from file extension.',
+    displayOptions: { show: { resource: ['attachment'], operation: ['upload'], inputSource: ['base64Direct'] } },
   },
   {
     displayName: 'Role',
