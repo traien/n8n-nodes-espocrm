@@ -1,6 +1,6 @@
 {
   "name": "@traien/n8n-nodes-espocrm",
-  "version": "1.2.1",
+  "version": "1.3.0",
   "description": "n8n integration with EspoCRM",
   "keywords": [
     "n8n-community-node-package",
