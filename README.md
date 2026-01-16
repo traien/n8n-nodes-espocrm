@@ -187,20 +187,44 @@ Supported operations are `get`, `getAll`, `create`, `update`, and `delete`. For 
 
 You can upload files to EspoCRM as `Attachment` records and then create a `Document` that references the uploaded file. You can also download attachments to binary output in n8n.
 
-1) Upload an Attachment
+#### Upload Methods
+
+The Attachment upload operation supports two input sources:
+
+**Option A: Binary Field (default)**
+
+Upload from a binary property on the input item. Use this when you have binary data from a previous node (e.g., HTTP Request, Read Binary File, Email trigger).
 
 - Add an `EspoCRM` node
 - Resource: `Attachment`
 - Operation: `Upload`
+- Input Source: `Binary Field`
 - Fields:
   - `Binary Property`: name of the binary key on the incoming item (default `data`)
   - `Related Type`: usually `Document` (but can be any entity supported by your instance)
-  - `Field`: usually `file` for Document’s File field
+  - `Field`: usually `file` for Document's File field
   - `Role`: defaults to `Attachment` (other roles: Inline Attachment)
 - The node derives `name`, `type`, and `size` from the binary; you can override `name` and `type` in Additional Fields
 - Output contains the created Attachment `id`
 
-2) Create a Document linked to the uploaded file
+**Option B: Base64 Direct**
+
+Provide base64-encoded file content directly. Use this when you have base64 data from an API response, AI agent, or other source.
+
+- Add an `EspoCRM` node
+- Resource: `Attachment`
+- Operation: `Upload`
+- Input Source: `Base64 Direct`
+- Fields:
+  - `Base64 Data`: the base64-encoded file content (without data URI prefix)
+  - `File Name`: file name with extension (e.g., `document.pdf`)
+  - `MIME Type`: optional, auto-detected from file extension if not provided
+  - `Related Type`: usually `Document`
+  - `Field`: usually `file`
+  - `Role`: defaults to `Attachment`
+- Output contains the created Attachment `id`
+
+#### Create a Document linked to the uploaded file
 
 - Add a second `EspoCRM` node
 - Resource: `Document`
@@ -209,16 +233,6 @@ You can upload files to EspoCRM as `Attachment` records and then create a `Docum
   - `Name`: document name
   - `File ID`: reference the Attachment `id` (from the previous step)
   - Optional: `Publish Date` (date only is expected; we normalize inputs), `Status`, `File Name`, `Folder ID`, `Description`, `Assigned User ID`
-
-3) Download an Attachment
-
-- Add an `EspoCRM` node
-- Resource: `Attachment`
-- Operation: `Download`
-- Fields:
-  - `Attachment ID`: the Attachment record ID
-  - `Binary Property`: output key to store the file (default `data`)
-- Output: one item with `binary[Binary Property]` populated, including `fileName` and `mimeType`
 
 Notes:
 - EspoCRM may restrict allowed file types by extension/MIME. If you receive `403 Not allowed file type`, verify your instance settings and the file’s extension/MIME.
@@ -237,7 +251,59 @@ Notes:
 
 ## Development
 
-To run a local version of n8n with this node for development, you can use the following Docker command. Make sure to replace `/path/to/your/local/n8n-espocrm` with the absolute path to this repository on your machine.
+### Local Development on macOS (npm)
+
+For local development on macOS with n8n installed globally via npm:
+
+1. **Install n8n globally** (if not already installed):
+   ```bash
+   npm install -g n8n
+   ```
+
+2. **Clone and build the package**:
+   ```bash
+   git clone https://github.com/traien/n8n-nodes-espocrm.git
+   cd n8n-nodes-espocrm
+   npm install
+   npm run build
+   ```
+
+3. **Link the package to n8n's custom nodes folder**:
+   ```bash
+   # Create package.json in n8n's nodes folder if it doesn't exist
+   mkdir -p ~/.n8n/nodes
+   cd ~/.n8n/nodes
+   echo '{"name": "installed-nodes", "private": true}' > package.json
+   
+   # Install the local package (creates a symlink)
+   npm install /path/to/your/n8n-espocrm
+   ```
+
+4. **Start n8n**:
+   ```bash
+   n8n start
+   ```
+   Access n8n at http://localhost:5678
+
+5. **Development workflow**:
+   ```bash
+   # After making changes to the source code:
+   cd /path/to/your/n8n-espocrm
+   npm run build
+   
+   # Restart n8n to pick up changes (Ctrl+C to stop, then):
+   n8n start
+   ```
+
+6. **Watch mode** (optional - auto-rebuild on changes):
+   ```bash
+   npm run dev
+   ```
+   Note: You still need to restart n8n after rebuilds.
+
+### Docker Development
+
+To run a local version of n8n with this node for development using Docker. Make sure to replace `/path/to/your/local/n8n-espocrm` with the absolute path to this repository on your machine.
 
 ```bash
 docker run -it --rm \
@@ -251,6 +317,15 @@ docker run -it --rm \
   -v /path/to/your/local/n8n-espocrm:/home/node/.n8n/custom/n8n-espocrm \
   n8nio/n8n
 ```
+
+### Useful Commands
+
+| Command | Description |
+|---------|-------------|
+| `npm run build` | Compile TypeScript and copy icons |
+| `npm run dev` | Watch mode for active development |
+| `npm run lintfix` | Auto-fix ESLint issues |
+| `npm run lint` | Check for linting errors |
 
 ## License
 
