@@ -102,6 +102,13 @@ export const leadFields: INodeProperties[] = [
 		},
 		options: [
 			{
+				displayName: 'Salutation Name',
+				name: 'salutationName',
+				type: 'string',
+				default: '',
+				description: 'Salutation name of the lead',
+			},
+			{
 				displayName: 'Account Name',
 				name: 'accountName',
 				type: 'string',
@@ -360,6 +367,13 @@ export const leadFields: INodeProperties[] = [
 				type: 'string',
 				default: '',
 				description: 'Primary email address of the lead',
+			},
+			{
+				displayName: 'Salutation Name',
+				name: 'salutationName',
+				type: 'string',
+				default: '',
+				description: 'Salutation name of the lead',
 			},
 			{
 				displayName: 'First Name',
