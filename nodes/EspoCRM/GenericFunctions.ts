@@ -6,6 +6,9 @@ import {
 	IHttpRequestOptions,
 	NodeOperationError,
 	IHttpRequestMethods,
+	ICredentialTestFunctions,
+	ICredentialsDecrypted,
+	INodeCredentialTestResult,
 } from 'n8n-workflow';
 import * as crypto from 'crypto';
 
@@ -21,7 +24,7 @@ function resolveBaseUrl(this: IFunctions, rawUrl?: string): string {
 	}
 
 	const trimmed = rawUrl.trim();
-	
+
 	// Check for obviously invalid URLs
 	if (trimmed.includes(' ') || trimmed.includes('\n') || trimmed.includes('\t')) {
 		throw new NodeOperationError(
@@ -29,7 +32,7 @@ function resolveBaseUrl(this: IFunctions, rawUrl?: string): string {
 			`Invalid EspoCRM Base URL "${rawUrl}" - contains whitespace. Please remove any spaces, tabs, or newlines.`,
 		);
 	}
-	
+
 	const withProtocol = /^https?:\/\//i.test(trimmed) ? trimmed : `https://${trimmed}`;
 	try {
 		const parsed = new URL(withProtocol);
@@ -67,7 +70,7 @@ export async function espoApiRequest(
 	uri?: string,
 	headers: IDataObject = {},
 ): Promise<any> {
-	const credentials = await this.getCredentials('espoCRMApi') as {
+	const credentials = (await this.getCredentials('espoCRMApi')) as {
 		baseUrl: string;
 		authType: string;
 		apiKey: string;
@@ -106,7 +109,7 @@ export async function espoApiRequest(
 
 	const options: IHttpRequestOptions = {
 		headers: {
-			'Accept': 'application/json',
+			Accept: 'application/json',
 			'Content-Type': 'application/json',
 			...headers,
 		},
@@ -188,9 +191,8 @@ export async function espoApiRequestBinary(
 	qs: IDataObject = {},
 	uri?: string,
 	headers: IDataObject = {},
-): Promise<{ data: Buffer; headers: IDataObject }>
-{
-	const credentials = await this.getCredentials('espoCRMApi') as {
+): Promise<{ data: Buffer; headers: IDataObject }> {
+	const credentials = (await this.getCredentials('espoCRMApi')) as {
 		baseUrl: string;
 		authType: string;
 		apiKey: string;
@@ -212,7 +214,7 @@ export async function espoApiRequestBinary(
 
 	const options: IHttpRequestOptions = {
 		headers: {
-			'Accept': 'application/octet-stream,*/*',
+			Accept: 'application/octet-stream,*/*',
 			...headers,
 		},
 		method,
@@ -248,7 +250,9 @@ export async function espoApiRequestBinary(
 			// Node.js Readable stream
 			buffer = await new Promise<Buffer>((resolve, reject) => {
 				const chunks: Buffer[] = [];
-				body.on('data', (chunk: Buffer) => chunks.push(Buffer.isBuffer(chunk) ? chunk : Buffer.from(chunk)));
+				body.on('data', (chunk: Buffer) =>
+					chunks.push(Buffer.isBuffer(chunk) ? chunk : Buffer.from(chunk)),
+				);
 				body.on('end', () => resolve(Buffer.concat(chunks)));
 				body.on('error', (err: Error) => reject(err));
 			});
@@ -258,8 +262,13 @@ export async function espoApiRequestBinary(
 			buffer = Buffer.alloc(0);
 		} else {
 			// Fallback attempt
-			try { buffer = Buffer.from(body); } catch {
-				throw new NodeOperationError(this.getNode(), 'Unexpected binary response type from EspoCRM');
+			try {
+				buffer = Buffer.from(body);
+			} catch {
+				throw new NodeOperationError(
+					this.getNode(),
+					'Unexpected binary response type from EspoCRM',
+				);
 			}
 		}
 		return { data: buffer, headers: (response.headers || {}) as IDataObject };
@@ -275,5 +284,58 @@ export async function espoApiRequestBinary(
 			friendlyMessage = `EspoCRM API binary error: ${method} ${endpoint}. Status: ${statusCode}${statusReason ? `. Reason: ${statusReason}` : ''}. ${errorMessage}`;
 		}
 		throw new NodeOperationError(this.getNode(), friendlyMessage);
+	}
+}
+
+/**
+ * Custom credentials test function that supports both API Key and HMAC authentication
+ */
+export async function testEspoConnection(
+	this: ICredentialTestFunctions,
+	credential: ICredentialsDecrypted<IDataObject>,
+): Promise<INodeCredentialTestResult> {
+	try {
+		const baseUrl = ((credential.data?.baseUrl as string) || '').trim().replace(/\/$/, '');
+		const authType = (credential.data?.authType as string) || 'apiKey';
+		const apiKey = (credential.data?.apiKey as string) || '';
+		const secretKey = (credential.data?.secretKey as string) || '';
+
+		if (!baseUrl) {
+			return { status: 'Error', message: 'Base URL is required' };
+		}
+		if (!apiKey) {
+			return { status: 'Error', message: 'API Key is required' };
+		}
+
+		const method = 'GET';
+		const endpoint = '/App/user';
+		const apiBaseUrl = `${baseUrl}/api/v1`;
+		const targetUrl = `${apiBaseUrl}${endpoint}`;
+
+		const headers: IDataObject = {
+			Accept: 'application/json',
+			'Content-Type': 'application/json',
+		};
+
+		if (authType === 'hmac' && secretKey) {
+			const hmacString = method + ' ' + endpoint;
+			const hmac = crypto.createHmac('sha256', secretKey);
+			hmac.update(hmacString);
+			const signature = hmac.digest('base64');
+			const authPart = Buffer.from(apiKey + ':').toString('base64') + signature;
+			headers['X-Hmac-Authorization'] = authPart;
+		} else {
+			headers['X-Api-Key'] = apiKey;
+		}
+
+		await this.helpers.request({
+			method,
+			url: targetUrl,
+			headers,
+		});
+
+		return { status: 'OK', message: 'Connection successful!' };
+	} catch (error: any) {
+		return { status: 'Error', message: error.message || 'Connection failed' };
 	}
 }

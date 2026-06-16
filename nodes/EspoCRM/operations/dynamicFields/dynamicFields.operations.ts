@@ -66,7 +66,7 @@ export const dynamicFieldsFields: INodeProperties[] = [
 		description: 'Type of entity to get field definitions for (e.g., Account, Contact, Lead)',
 		placeholder: 'Contact',
 	},
-	
+
 	/* -------------------------------------------------------------------------- */
 	/*                        dynamicFields:getFieldMetadata                     */
 	/* -------------------------------------------------------------------------- */
@@ -85,7 +85,7 @@ export const dynamicFieldsFields: INodeProperties[] = [
 		description: 'Name of the field to get metadata for',
 		placeholder: 'name',
 	},
-	
+
 	/* -------------------------------------------------------------------------- */
 	/*                        dynamicFields:filterRecords                        */
 	/* -------------------------------------------------------------------------- */
@@ -148,7 +148,8 @@ export const dynamicFieldsFields: INodeProperties[] = [
 							loadOptionsDependsOn: ['entityType'],
 						},
 						default: '',
-						description: 'The field name to filter on. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
+						description:
+							'The field name to filter on. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code/expressions/">expression</a>.',
 					},
 					{
 						displayName: 'Operator',
@@ -251,7 +252,8 @@ export const dynamicFieldsFields: INodeProperties[] = [
 					loadOptionsDependsOn: ['entityType'],
 				},
 				default: '',
-				description: 'Field to sort results by. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
+				description:
+					'Field to sort results by. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code/expressions/">expression</a>.',
 			},
 			{
 				displayName: 'Order Direction',
@@ -279,14 +281,16 @@ export const dynamicFieldsFields: INodeProperties[] = [
 					loadOptionsDependsOn: ['entityType'],
 				},
 				default: [],
-				description: 'Fields to return in the response. Choose from the list, or specify IDs using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
+				description:
+					'Fields to return in the response. Choose from the list, or specify IDs using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>. Choose from the list, or specify IDs using an <a href="https://docs.n8n.io/code/expressions/">expression</a>.',
 			},
 			{
 				displayName: 'Skip Total Count',
 				name: 'skipTotalCount',
 				type: 'boolean',
 				default: false,
-				description: 'Whether to skip calculating total count for large datasets to improve performance',
+				description:
+					'Whether to skip calculating total count for large datasets to improve performance',
 			},
 		],
 	},
