@@ -123,6 +123,15 @@ The Dynamic resource allows you to work with any entity type in your EspoCRM sys
 5. The available fields will be automatically loaded based on the entity type
 6. Complete the required fields and connect to your workflow
 
+### Working with Dynamic Fields (Query Builder & Metadata)
+
+The **Dynamic Fields Query/Metadata** resource provides a visual query builder and a metadata interface:
+
+- **Filter Records**: Search records of any entity type using a checklist of field conditions. Instead of writing raw JSON queries, choose fields from your EspoCRM schema, select an operator (Equals, Contains, Greater Than, etc.), and input values.
+- **Get Entity Fields**: Fetch definitions of all fields defined for an entity.
+- **Get Entity Types**: List all scopes/entities configured in your instance.
+- **Get Field Metadata**: Retrieve details for a single specific field.
+
 ### Advanced Filtering Example
 
 ```json

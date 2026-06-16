@@ -160,7 +160,7 @@ export const leadFields: INodeProperties[] = [
 					},
 				],
 				description: 'Address of the lead',
-				},
+			},
 			{
 				displayName: 'Description',
 				name: 'description',
@@ -586,7 +586,8 @@ export const leadFields: INodeProperties[] = [
 				name: 'skipTotalCount',
 				type: 'boolean',
 				default: false,
-				description: 'Whether to skip calculating total count for large datasets to improve performance',
+				description:
+					'Whether to skip calculating total count for large datasets to improve performance',
 			},
 			{
 				displayName: 'Where (Filter Conditions)',
