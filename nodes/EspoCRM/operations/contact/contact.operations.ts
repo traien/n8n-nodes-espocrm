@@ -399,7 +399,8 @@ export const contactFields: INodeProperties[] = [
 				name: 'skipTotalCount',
 				type: 'boolean',
 				default: false,
-				description: 'Whether to skip calculating total count for large datasets to improve performance',
+				description:
+					'Whether to skip calculating total count for large datasets to improve performance',
 			},
 			{
 				displayName: 'Boolean Filter List',

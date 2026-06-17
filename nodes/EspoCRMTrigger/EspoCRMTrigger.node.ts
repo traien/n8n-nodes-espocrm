@@ -9,6 +9,7 @@ import {
 	NodeOperationError,
 } from 'n8n-workflow';
 import { createHmac } from 'crypto';
+import { testEspoConnection } from '../EspoCRM/GenericFunctions';
 
 export class EspoCRMTrigger implements INodeType {
 	description: INodeTypeDescription = {
@@ -29,6 +30,7 @@ export class EspoCRMTrigger implements INodeType {
 			{
 				name: 'espoCRMApi',
 				required: true,
+				testedBy: 'testEspoConnection',
 			},
 		],
 		webhooks: [
@@ -102,6 +104,12 @@ export class EspoCRMTrigger implements INodeType {
 		],
 	};
 
+	methods = {
+		credentialTest: {
+			testEspoConnection,
+		},
+	};
+
 	// The function to register the webhook in EspoCRM system
 	async webhookCreate(this: IHookFunctions): Promise<boolean> {
 		const webhookUrl = this.getNodeWebhookUrl('default');
@@ -119,7 +127,10 @@ export class EspoCRMTrigger implements INodeType {
 		if (eventType === 'fieldUpdate') {
 			const fieldName = this.getNodeParameter('fieldName') as string;
 			if (!fieldName) {
-				throw new NodeOperationError(this.getNode(), 'Field name is required for field update events');
+				throw new NodeOperationError(
+					this.getNode(),
+					'Field name is required for field update events',
+				);
 			}
 			eventName += `.${fieldName}`;
 		}
@@ -129,7 +140,7 @@ export class EspoCRMTrigger implements INodeType {
 			method: 'POST',
 			url: '/Webhook',
 			headers: {
-				'Accept': 'application/json',
+				Accept: 'application/json',
 				'Content-Type': 'application/json',
 			},
 			body: {
@@ -166,7 +177,10 @@ export class EspoCRMTrigger implements INodeType {
 				webhookData.secretKey = response.secretKey;
 				return true;
 			} else {
-				throw new NodeOperationError(this.getNode(), 'Failed to create webhook in EspoCRM: Invalid response');
+				throw new NodeOperationError(
+					this.getNode(),
+					'Failed to create webhook in EspoCRM: Invalid response',
+				);
 			}
 		} catch (error) {
 			if (error.response && error.response.body) {
@@ -174,7 +188,7 @@ export class EspoCRMTrigger implements INodeType {
 				const statusCode = error.statusCode;
 				throw new NodeOperationError(
 					this.getNode(),
-					`EspoCRM API error: ${errorMessage}. Status: ${statusCode}`
+					`EspoCRM API error: ${errorMessage}. Status: ${statusCode}`,
 				);
 			}
 			throw error;
@@ -199,7 +213,7 @@ export class EspoCRMTrigger implements INodeType {
 			method: 'DELETE',
 			url: `/Webhook/${webhookData.webhookId}`,
 			headers: {
-				'Accept': 'application/json',
+				Accept: 'application/json',
 			},
 		};
 
@@ -243,7 +257,7 @@ export class EspoCRMTrigger implements INodeType {
 				const statusCode = error.statusCode;
 				throw new NodeOperationError(
 					this.getNode(),
-					`EspoCRM API error: ${errorMessage}. Status: ${statusCode}`
+					`EspoCRM API error: ${errorMessage}. Status: ${statusCode}`,
 				);
 			}
 			throw error;
@@ -272,8 +286,13 @@ export class EspoCRMTrigger implements INodeType {
 
 			try {
 				// Calculate expected signature
-				const payload = JSON.stringify(bodyData);
-				const calculatedSignature = Buffer.from(`${webhookData.webhookId}:${createHmac('sha256', webhookData.secretKey as string).update(payload).digest('hex')}`).toString('base64');
+				const req = this.getRequestObject();
+				const payload = req.rawBody ? req.rawBody.toString('utf8') : JSON.stringify(bodyData);
+				const calculatedSignature = Buffer.from(
+					`${webhookData.webhookId}:${createHmac('sha256', webhookData.secretKey as string)
+						.update(payload)
+						.digest('hex')}`,
+				).toString('base64');
 
 				if (signature !== calculatedSignature) {
 					return {
@@ -309,11 +328,7 @@ export class EspoCRMTrigger implements INodeType {
 			}
 
 			return {
-				workflowData: [
-					[
-						...returnData,
-					],
-				],
+				workflowData: [[...returnData]],
 			};
 		} else {
 			// If for some reason the data is not an array, wrap it in an array

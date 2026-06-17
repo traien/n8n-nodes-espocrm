@@ -17,10 +17,20 @@ import { dynamicOperations, dynamicFields } from './operations/dynamic/dynamic.o
 import { meetingOperations, meetingFields } from './operations/meeting/meeting.operations';
 import { taskOperations, taskFields } from './operations/task/task.operations';
 import { callOperations, callFields } from './operations/call/call.operations';
-import { opportunityOperations, opportunityFields } from './operations/opportunity/opportunity.operations';
-import { attachmentOperations, attachmentFields } from './operations/attachment/attachment.operations';
+import {
+	opportunityOperations,
+	opportunityFields,
+} from './operations/opportunity/opportunity.operations';
+import {
+	attachmentOperations,
+	attachmentFields,
+} from './operations/attachment/attachment.operations';
 import { documentOperations, documentFields } from './operations/document/document.operations';
 import { caseOperations, caseFields } from './operations/case/case.operations';
+import {
+	dynamicFieldsOperations,
+	dynamicFieldsFields,
+} from './operations/dynamicFields/dynamicFields.operations';
 
 // Import handler factory
 import { HandlerFactory } from './handlers/HandlerFactory';
@@ -29,7 +39,7 @@ import { HandlerFactory } from './handlers/HandlerFactory';
 import { MetadataService } from './services/MetadataService';
 
 // Import API request functions
-import { espoApiRequest, espoApiRequestAllItems } from './GenericFunctions';
+import { espoApiRequest, espoApiRequestAllItems, testEspoConnection } from './GenericFunctions';
 
 export class EspoCRM implements INodeType {
 	description: INodeTypeDescription = {
@@ -49,6 +59,7 @@ export class EspoCRM implements INodeType {
 			{
 				name: 'espoCRMApi',
 				required: true,
+				testedBy: 'testEspoConnection',
 			},
 		],
 		documentationUrl: 'https://docs.espocrm.com/development/api/',
@@ -108,6 +119,10 @@ export class EspoCRM implements INodeType {
 						name: 'Document',
 						value: 'document',
 					},
+					{
+						name: 'Dynamic Fields Query/Metadata',
+						value: 'dynamicFields',
+					},
 				],
 				default: 'contact',
 			},
@@ -126,7 +141,8 @@ export class EspoCRM implements INodeType {
 						resource: ['customEntity'],
 					},
 				},
-				description: 'Type of entity to interact with (e.g., Opportunity, Case, Product). Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
+				description:
+					'Type of entity to interact with (e.g., Opportunity, Case, Product). Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code/expressions/">expression</a>.',
 			},
 
 			// Include entity-specific operations and fields
@@ -152,6 +168,8 @@ export class EspoCRM implements INodeType {
 			...documentFields,
 			...dynamicOperations,
 			...dynamicFields,
+			...dynamicFieldsOperations,
+			...dynamicFieldsFields,
 
 			// Operations for custom entities
 			{
@@ -194,7 +212,7 @@ export class EspoCRM implements INodeType {
 						value: 'update',
 						description: 'Update a record',
 						action: 'Update a record',
-						},
+					},
 				],
 				default: 'create',
 			},
@@ -361,7 +379,8 @@ export class EspoCRM implements INodeType {
 						name: 'skipTotalCount',
 						type: 'boolean',
 						default: false,
-						description: 'Whether to skip calculating total count for large datasets to improve performance',
+						description:
+							'Whether to skip calculating total count for large datasets to improve performance',
 					},
 				],
 			},
@@ -375,10 +394,12 @@ export class EspoCRM implements INodeType {
 			async getEntityTypes(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
 				try {
 					const entityTypes = await MetadataService.getEntityList.call(this, this);
-					return entityTypes.map(entityType => ({
-						name: entityType,
-						value: entityType,
-					})).sort((a, b) => a.name.localeCompare(b.name));
+					return entityTypes
+						.map((entityType) => ({
+							name: entityType,
+							value: entityType,
+						}))
+						.sort((a, b) => a.name.localeCompare(b.name));
 				} catch (error) {
 					console.error('Error loading entity types:', error);
 					return [{ name: 'Error Loading Entity Types', value: '' }];
@@ -396,15 +417,18 @@ export class EspoCRM implements INodeType {
 				try {
 					const fieldDefs = await MetadataService.getFieldDefs.call(this, this, entityType);
 
-					return Object.keys(fieldDefs).map(fieldName => {
-						const fieldDef = fieldDefs[fieldName] as IDataObject;
-						const label = fieldDef.label ? `${fieldDef.label as string} (${fieldName})` : fieldName;
-						return {
-							name: label,
-							value: fieldName,
-						};
-					}).sort((a, b) => a.name.localeCompare(b.name));
-
+					return Object.keys(fieldDefs)
+						.map((fieldName) => {
+							const fieldDef = fieldDefs[fieldName] as IDataObject;
+							const label = fieldDef.label
+								? `${fieldDef.label as string} (${fieldName})`
+								: fieldName;
+							return {
+								name: label,
+								value: fieldName,
+							};
+						})
+						.sort((a, b) => a.name.localeCompare(b.name));
 				} catch (error) {
 					console.error(`Error loading fields for entity type ${entityType}:`, error);
 					return [{ name: `Error loading fields for ${entityType}`, value: '' }];
@@ -433,18 +457,20 @@ export class EspoCRM implements INodeType {
 					}
 
 					return [{ name: 'Not an Enum Field or No Options Available', value: '' }];
-
 				} catch (error) {
 					console.error(`Error loading enum options for ${entityType}.${fieldName}:`, error);
 					return [{ name: `Error loading options for ${fieldName}`, value: '' }];
 				}
 			},
 		},
+		credentialTest: {
+			testEspoConnection,
+		},
 	};
 
 	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
 		const items = this.getInputData();
-		const returnData: IDataObject[] = [];
+		const returnData: INodeExecutionData[] = [];
 
 		// For each input item, execute the operation
 		for (let i = 0; i < items.length; i++) {
@@ -470,16 +496,14 @@ export class EspoCRM implements INodeType {
 						// Execute API request
 						const endpoint = `/${entityType}`;
 						const responseData = await espoApiRequest.call(this, 'POST', endpoint, dataToSend);
-						returnData.push(responseData as IDataObject);
-					}
-					else if (operation === 'get') {
+						returnData.push({ json: responseData as IDataObject });
+					} else if (operation === 'get') {
 						// Get a single record
 						const recordId = this.getNodeParameter('recordId', i) as string;
 						const endpoint = `/${entityType}/${recordId}`;
 						const responseData = await espoApiRequest.call(this, 'GET', endpoint, {});
-						returnData.push(responseData as IDataObject);
-					}
-					else if (operation === 'getAll') {
+						returnData.push({ json: responseData as IDataObject });
+					} else if (operation === 'getAll') {
 						// Get all records with filtering
 						const returnAll = this.getNodeParameter('returnAll', i) as boolean;
 						const filters = this.getNodeParameter('filters', i, {}) as IDataObject;
@@ -492,7 +516,10 @@ export class EspoCRM implements INodeType {
 								try {
 									qs.where = JSON.parse(filters.where);
 								} catch (e) {
-									throw new NodeOperationError(this.getNode(), `Invalid JSON in 'where' parameter: ${e.message}`);
+									throw new NodeOperationError(
+										this.getNode(),
+										`Invalid JSON in 'where' parameter: ${e.message}`,
+									);
 								}
 							} else {
 								qs.where = filters.where;
@@ -511,15 +538,16 @@ export class EspoCRM implements INodeType {
 						// Handle pagination
 						if (returnAll === true) {
 							const responseData = await espoApiRequestAllItems.call(this, 'GET', endpoint, {}, qs);
-							returnData.push(...responseData as IDataObject[]);
+							returnData.push(...(responseData as IDataObject[]).map((item) => ({ json: item })));
 						} else {
 							const limit = this.getNodeParameter('limit', i) as number;
 							qs.maxSize = limit;
 							const responseData = await espoApiRequest.call(this, 'GET', endpoint, {}, qs);
-							returnData.push(...responseData.list as IDataObject[]);
+							returnData.push(
+								...(responseData.list as IDataObject[]).map((item) => ({ json: item })),
+							);
 						}
-					}
-					else if (operation === 'update') {
+					} else if (operation === 'update') {
 						// Update a record
 						const recordId = this.getNodeParameter('recordId', i) as string;
 						const dataToSend: IDataObject = {};
@@ -533,17 +561,18 @@ export class EspoCRM implements INodeType {
 						// Execute API request
 						const endpoint = `/${entityType}/${recordId}`;
 						const responseData = await espoApiRequest.call(this, 'PATCH', endpoint, dataToSend);
-						returnData.push(responseData as IDataObject);
-					}
-					else if (operation === 'delete') {
+						returnData.push({ json: responseData as IDataObject });
+					} else if (operation === 'delete') {
 						// Delete a record
 						const recordId = this.getNodeParameter('recordId', i) as string;
 						const endpoint = `/${entityType}/${recordId}`;
 						await espoApiRequest.call(this, 'DELETE', endpoint, {});
 						returnData.push({
-							success: true,
-							id: recordId,
-							entityType,
+							json: {
+								success: true,
+								id: recordId,
+								entityType,
+							},
 						});
 					}
 				}
@@ -553,56 +582,69 @@ export class EspoCRM implements INodeType {
 					const handler = HandlerFactory.getHandler(resource);
 
 					// Execute the operation using the handler
-					let responseData: IDataObject | IDataObject[];
-
-
+					let responseData: IDataObject | IDataObject[] | INodeExecutionData;
 
 					// Special-case: map attachment upload -> create
 					if (resource === 'attachment' && operation === 'upload') {
 						responseData = await handler.create.call(this, i);
-						returnData.push(responseData as IDataObject);
-						break;
+						returnData.push({ json: responseData as IDataObject });
+						continue;
 					}
 
 					switch (operation) {
 						case 'create':
 							responseData = await handler.create.call(this, i);
-							returnData.push(responseData as IDataObject);
+							returnData.push({ json: responseData as IDataObject });
 							break;
 
 						case 'get':
 							responseData = await handler.get.call(this, i);
-							returnData.push(responseData as IDataObject);
+							returnData.push({ json: responseData as IDataObject });
 							break;
 
 						case 'update':
 							responseData = await handler.update.call(this, i);
-							returnData.push(responseData as IDataObject);
+							returnData.push({ json: responseData as IDataObject });
 							break;
 
 						case 'delete':
 							responseData = await handler.delete.call(this, i);
-							returnData.push(responseData as IDataObject);
+							returnData.push({ json: responseData as IDataObject });
 							break;
 
 						case 'getAll':
-							responseData = await handler.getAll.call(this, i);
-							returnData.push(...responseData as IDataObject[]);
+							const responseDataList = await handler.getAll.call(this, i);
+							returnData.push(...responseDataList.map((item) => ({ json: item })));
+							break;
+
+						case 'download':
+							if (handler.download) {
+								const downloadData = await handler.download.call(this, i);
+								returnData.push(downloadData as INodeExecutionData);
+							} else {
+								throw new NodeOperationError(
+									this.getNode(),
+									`The operation "download" is not supported for resource type "${resource}"`,
+								);
+							}
 							break;
 
 						default:
-							throw new NodeOperationError(this.getNode(), `The operation "${operation}" is not supported for resource type "${resource}"`);
+							throw new NodeOperationError(
+								this.getNode(),
+								`The operation "${operation}" is not supported for resource type "${resource}"`,
+							);
 					}
 				}
 			} catch (error) {
 				if (this.continueOnFail()) {
-					returnData.push({ error: error.message });
+					returnData.push({ json: { error: error.message } });
 					continue;
 				}
 				throw error;
 			}
 		}
 
-		return [this.helpers.returnJsonArray(returnData)];
+		return [returnData];
 	}
 }
