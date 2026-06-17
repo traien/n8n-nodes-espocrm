@@ -49,6 +49,13 @@ export const accountFields: INodeProperties[] = [
 		},
 		options: [
 			{
+				displayName: 'Salutation Name',
+				name: 'salutationName',
+				type: 'string',
+				default: '',
+				description: 'Salutation name of the contact',
+			},
+			{
 				displayName: 'Website',
 				name: 'website',
 				type: 'string',
@@ -244,6 +251,13 @@ export const accountFields: INodeProperties[] = [
 			},
 		},
 		options: [
+			{
+				displayName: 'Salutation Name',
+				name: 'salutationName',
+				type: 'string',
+				default: '',
+				description: 'Salutation name of the contact',
+			},
 			{
 				displayName: 'Name',
 				name: 'name',
