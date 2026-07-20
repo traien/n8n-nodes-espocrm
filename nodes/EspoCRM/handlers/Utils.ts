@@ -1,4 +1,4 @@
-import { IDataObject } from 'n8n-workflow';
+import { IDataObject, IExecuteFunctions } from 'n8n-workflow';
 
 /**
  * Process address fields for entities
@@ -85,4 +85,20 @@ export function toEspoDate(value?: string): string | undefined {
     const mm = pad(d.getMonth() + 1);
     const dd = pad(d.getDate());
     return `${yyyy}-${mm}-${dd}`;
+}
+
+/**
+ * Get headers for create operation, including skip duplicate check if requested
+ */
+export function getCreateHeaders(ctx: IExecuteFunctions, index: number): IDataObject {
+  const headers: IDataObject = {};
+  try {
+    const options = ctx.getNodeParameter('options', index, {}) as IDataObject;
+    if (options.skipDuplicateCheck === true) {
+      headers['X-Skip-Duplicate-Check'] = 'true';
+    }
+  } catch (error) {
+    // options parameter might not be defined in all contexts
+  }
+  return headers;
 }

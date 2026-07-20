@@ -1,7 +1,7 @@
 import { IExecuteFunctions, IDataObject, NodeOperationError } from 'n8n-workflow';
 import { EntityHandler } from './EntityHandler';
 import { espoApiRequest, espoApiRequestAllItems } from '../GenericFunctions';
-import { toEspoDate } from './Utils';
+import { toEspoDate, getCreateHeaders } from './Utils';
 
 export class DocumentHandler implements EntityHandler {
   async create(this: IExecuteFunctions, index: number): Promise<IDataObject> {
@@ -14,7 +14,8 @@ export class DocumentHandler implements EntityHandler {
     const additionalFields = this.getNodeParameter('additionalFields', index, {}) as IDataObject;
     Object.assign(entityData, additionalFields);
 
-  const response = await espoApiRequest.call(this, 'POST', '/Document', entityData);
+    const headers = getCreateHeaders(this, index);
+    const response = await espoApiRequest.call(this, 'POST', '/Document', entityData, {}, undefined, headers);
     return response as IDataObject;
   }
 

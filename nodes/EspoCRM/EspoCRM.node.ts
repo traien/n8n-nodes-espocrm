@@ -365,6 +365,30 @@ export class EspoCRM implements INodeType {
 					},
 				],
 			},
+			{
+				displayName: 'Options',
+				name: 'options',
+				type: 'collection',
+				placeholder: 'Add Option',
+				default: {},
+				displayOptions: {
+					show: {
+						operation: ['create'],
+					},
+					hide: {
+						resource: ['attachment', 'dynamicFields'],
+					},
+				},
+				options: [
+					{
+						displayName: 'Skip Duplicate Check',
+						name: 'skipDuplicateCheck',
+						type: 'boolean',
+						default: false,
+						description: 'Whether to skip duplicate verification checks during record creation',
+					},
+				],
+			},
 		],
 	};
 
@@ -469,7 +493,22 @@ export class EspoCRM implements INodeType {
 
 						// Execute API request
 						const endpoint = `/${entityType}`;
-						const responseData = await espoApiRequest.call(this, 'POST', endpoint, dataToSend);
+						const headers: IDataObject = {};
+						try {
+							const options = this.getNodeParameter('options', i, {}) as IDataObject;
+							if (options.skipDuplicateCheck === true) {
+								headers['X-Skip-Duplicate-Check'] = 'true';
+							}
+						} catch (error) {}
+						const responseData = await espoApiRequest.call(
+							this,
+							'POST',
+							endpoint,
+							dataToSend,
+							{},
+							undefined,
+							headers,
+						);
 						returnData.push(responseData as IDataObject);
 					}
 					else if (operation === 'get') {

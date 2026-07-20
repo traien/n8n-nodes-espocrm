@@ -33,7 +33,7 @@ The EspoCRM node provides comprehensive access to EspoCRM's API functionality:
   - Pagination support
   - Selective field loading
   - Skip total count for large datasets
-  - Duplicate checking control
+  - Skip duplicate verification checks on record creation (using `X-Skip-Duplicate-Check` header)
 
 - **AI Agent Tooling**
   - Dedicated `EspoCRM Tool` node that outputs an AI Tool connection for n8n Agents
@@ -99,7 +99,8 @@ Create a new contact record with customized field values:
    - Last Name
    - Email Address
 5. Add any additional fields as needed
-6. Connect to other nodes in your workflow
+6. (Optional) Under **Options**, enable **Skip Duplicate Check** if you wish to bypass EspoCRM's duplicate verification rules
+7. Connect to other nodes in your workflow
 
 ### Creating a Meeting
 
