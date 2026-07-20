@@ -1,7 +1,7 @@
 import { IExecuteFunctions, IDataObject, NodeOperationError } from 'n8n-workflow';
 import { EntityHandler } from './EntityHandler';
 import { espoApiRequest, espoApiRequestAllItems } from '../GenericFunctions';
-import { toEspoDate } from './Utils';
+import { toEspoDate, getCreateHeaders } from './Utils';
 
 /**
  * Class for handling Opportunity entity operations
@@ -17,7 +17,8 @@ export class OpportunityHandler implements EntityHandler {
     Object.assign(entityData, additionalFields);
 
     const endpoint = '/opportunity';
-    const responseData = await espoApiRequest.call(this, 'POST', endpoint, entityData);
+    const headers = getCreateHeaders(this, index);
+    const responseData = await espoApiRequest.call(this, 'POST', endpoint, entityData, {}, undefined, headers);
     return responseData as IDataObject;
   }
 
