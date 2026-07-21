@@ -32,4 +32,4 @@ jobs:
         run: npm run build
 
       - name: Publish to npm
-        run: npm publish --provenance --access public --no-git-checks
+        run: npm publish --provenance --access public
