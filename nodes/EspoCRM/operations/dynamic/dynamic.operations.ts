@@ -63,7 +63,8 @@ export const dynamicFields: INodeProperties[] = [
 				resource: ['dynamic'],
 			},
 		},
-		description: 'Type of entity to interact with. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
+		description:
+			'Type of entity to interact with. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code/expressions/">expression</a>.',
 	},
 
 	// Fields for Create Operation
@@ -104,7 +105,8 @@ export const dynamicFields: INodeProperties[] = [
 							loadOptionsDependsOn: ['entityType'],
 						},
 						default: '',
-						description: 'Name of the field. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
+						description:
+							'Name of the field. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code/expressions/">expression</a>.',
 					},
 					{
 						displayName: 'Field Value',
@@ -172,7 +174,8 @@ export const dynamicFields: INodeProperties[] = [
 							loadOptionsDependsOn: ['entityType'],
 						},
 						default: '',
-						description: 'Name of the field to update. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
+						description:
+							'Name of the field to update. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code/expressions/">expression</a>.',
 					},
 					{
 						displayName: 'Field Value',
